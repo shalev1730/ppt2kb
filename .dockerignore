@@ -1,0 +1,11 @@
+.git
+dist
+data
+tests
+docs
+*.pyc
+__pycache__
+.pytest_cache
+deploy/standalone
+scripts
+sbom

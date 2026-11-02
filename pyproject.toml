@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ppt2kb"
+version = "1.0.0"
+description = "Secure on-premise PowerPoint to ServiceNow Knowledge converter (built on ppt2desc)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.115,<1.0",
+    "uvicorn>=0.30,<1.0",
+    "python-multipart>=0.0.18",
+    "httpx>=0.27,<1.0",
+    "pydantic>=2.7,<3.0",
+    "pydantic-settings>=2.3,<3.0",
+    "pypdfium2>=4.30",
+    "pillow>=10.3",
+    "python-pptx>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-timeout>=2.3",
+    "pip-audit>=2.7",
+    "cyclonedx-bom>=4",
+]
+
+[project.scripts]
+ppt2kb = "ppt2kb.app:main"
+ppt2kb-cli = "ppt2kb.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"ppt2kb.web" = ["static/*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+testpaths = ["tests"]
+timeout = 600
+filterwarnings = ["ignore::DeprecationWarning"]

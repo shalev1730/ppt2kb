@@ -1,0 +1,57 @@
+[Unit]
+Description=ppt2kb - PowerPoint to ServiceNow Knowledge converter
+Documentation=file:@PREFIX@/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+Group=@USER@
+EnvironmentFile=@CONF_DIR@/ppt2kb.env
+Environment=PPT2KB_DATA_DIR=@DATA_DIR@
+Environment=OTEL_SDK_DISABLED=true
+Environment=NO_PROXY=* no_proxy=*
+Environment=HOME=@DATA_DIR@
+WorkingDirectory=@DATA_DIR@
+ExecStart=@PREFIX@/venv/bin/ppt2kb
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+KillMode=mixed
+
+# ---- hardening ---------------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=@DATA_DIR@
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+SystemCallArchitectures=native
+# @resources is NOT denied: the application applies setrlimit() to the LibreOffice child process.
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0027
+# resource limits for the whole service (LibreOffice included)
+MemoryMax=6G
+TasksMax=512
+CPUQuota=400%
+LimitNOFILE=65536
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

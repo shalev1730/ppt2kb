@@ -1,0 +1,66 @@
+# ppt2kb - Docker Compose deployment (internal network)
+#
+#   cp deploy/docker/.env.example deploy/docker/.env   # edit values
+#   docker compose -f deploy/docker/docker-compose.yml up -d
+#
+# The container only needs to reach the Qwen API and the ServiceNow instance.
+# If your Docker host enforces egress policies, allow exactly those two hosts.
+
+services:
+  ppt2kb:
+    image: ${PPT2KB_IMAGE:-ppt2kb:1.0.0}
+    container_name: ppt2kb
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PPT2KB_HOST: 0.0.0.0
+      PPT2KB_PORT: "8080"
+      PPT2KB_DATA_DIR: /data
+      OTEL_SDK_DISABLED: "true"
+    ports:
+      # host port (configurable) -> container port 8080
+      - "${PPT2KB_BIND_ADDRESS:-127.0.0.1}:${PPT2KB_HOST_PORT:-8080}:8080"
+    volumes:
+      - ppt2kb-data:/data
+      # Internal CA bundle (optional). Set PPT2KB_CA_BUNDLE=/certs/ca.pem in .env
+      - ${PPT2KB_CA_BUNDLE_HOST_PATH:-./certs}:/certs:ro
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 512
+    deploy:
+      resources:
+        limits:
+          cpus: "${PPT2KB_CPUS:-4}"
+          memory: ${PPT2KB_MEMORY:-6g}
+        reservations:
+          memory: 1g
+    # Compose v2 (non-swarm) honours these too:
+    cpus: ${PPT2KB_CPUS:-4}
+    mem_limit: ${PPT2KB_MEMORY:-6g}
+    healthcheck:
+      test: ["CMD", "/opt/ppt2kb/bin/python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    # Uncomment to pin the DNS of internal services if the host resolver cannot:
+    # extra_hosts:
+    #   - "qwen.internal:10.0.0.10"
+    #   - "servicenow.internal:10.0.0.20"
+
+volumes:
+  ppt2kb-data:
+    # To use a host directory instead:
+    # driver: local
+    # driver_opts: { type: none, o: bind, device: /srv/ppt2kb/data }

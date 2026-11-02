@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ppt2kb</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">KB</span>
+    <span data-i18n="app.title">PowerPoint → ServiceNow Knowledge</span>
+  </div>
+  <nav>
+    <a href="#/jobs" data-i18n="nav.jobs">Presentations</a>
+    <a href="#/upload" data-i18n="nav.upload">Upload</a>
+    <a href="#/settings" data-i18n="nav.settings">Settings</a>
+  </nav>
+  <div class="topbar-right">
+    <span id="health" class="pill" title="service health">…</span>
+    <button id="lang-toggle" class="btn btn-ghost" type="button">עברית</button>
+  </div>
+</header>
+
+<main id="view" class="container"></main>
+
+<div id="toast" class="toast" hidden></div>
+
+<!-- Templates -->
+<template id="tpl-jobs">
+  <section>
+    <div class="row between">
+      <h1 data-i18n="jobs.title">Presentations</h1>
+      <a class="btn btn-primary" href="#/upload" data-i18n="jobs.new">+ Upload presentation</a>
+    </div>
+    <table class="table" id="jobs-table">
+      <thead><tr>
+        <th data-i18n="jobs.name">Name</th>
+        <th data-i18n="jobs.status">Status</th>
+        <th data-i18n="jobs.slides">Slides</th>
+        <th data-i18n="jobs.created">Created</th>
+        <th data-i18n="jobs.article">Article</th>
+        <th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="muted" id="jobs-empty" hidden data-i18n="jobs.empty">No presentations yet.</p>
+  </section>
+</template>
+
+<template id="tpl-upload">
+  <section class="narrow">
+    <h1 data-i18n="upload.title">Upload a presentation</h1>
+    <form id="upload-form" class="card">
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="file" name="file" accept=".ppt,.pptx,.pps,.ppsx" required>
+        <span data-i18n="upload.drop">Drop a .pptx / .ppt file here or click to choose</span>
+        <span id="file-name" class="muted"></span>
+      </label>
+      <label><span data-i18n="upload.articleTitle">Article title (optional)</span>
+        <input type="text" name="title" maxlength="160" id="title">
+      </label>
+      <p class="muted" id="upload-limits"></p>
+      <div class="row">
+        <button class="btn btn-primary" type="submit" id="upload-btn" data-i18n="upload.start">Upload and process</button>
+      </div>
+      <progress id="upload-progress" max="100" value="0" hidden></progress>
+    </form>
+  </section>
+</template>
+
+<template id="tpl-job">
+  <section id="job-page">
+    <div class="row between wrap">
+      <div>
+        <a href="#/jobs" class="muted">&larr; <span data-i18n="job.back">All presentations</span></a>
+        <h1 id="job-title" class="editable" contenteditable="true" spellcheck="false"></h1>
+        <div class="muted" id="job-meta"></div>
+      </div>
+      <div class="row gap wrap" id="job-actions">
+        <button class="btn" id="btn-resume" data-i18n="job.resume" hidden>Resume</button>
+        <button class="btn" id="btn-retry-failed" data-i18n="job.retryFailed" hidden>Retry failed slides</button>
+        <button class="btn btn-ghost" id="btn-cancel" data-i18n="job.cancel" hidden>Cancel</button>
+        <a class="btn" id="btn-export-json" target="_blank" data-i18n="job.exportJson">Export JSON</a>
+        <a class="btn" id="btn-export-html" target="_blank" data-i18n="job.exportHtml">Export HTML</a>
+        <button class="btn btn-ghost" id="btn-preview" data-i18n="job.preview">Preview article</button>
+        <button class="btn btn-danger btn-ghost" id="btn-delete" data-i18n="job.delete">Delete</button>
+      </div>
+    </div>
+
+    <div class="card" id="progress-card">
+      <div class="row between wrap">
+        <div>
+          <strong id="job-status-label"></strong>
+          <span class="muted" id="job-error"></span>
+        </div>
+        <div class="counts">
+          <span class="pill ok"><span id="c-done">0</span> <span data-i18n="job.done">done</span></span>
+          <span class="pill warn"><span id="c-pending">0</span> <span data-i18n="job.pending">pending</span></span>
+          <span class="pill err"><span id="c-failed">0</span> <span data-i18n="job.failed">failed</span></span>
+        </div>
+      </div>
+      <progress id="job-progress" max="100" value="0"></progress>
+    </div>
+
+    <div class="card" id="publish-card">
+      <h2 data-i18n="publish.title">Create ServiceNow Knowledge draft</h2>
+      <div class="row gap wrap align-end">
+        <label class="grow"><span data-i18n="publish.kb">Knowledge base</span>
+          <select id="kb-select"><option value="" data-i18n="publish.loadKb">Load knowledge bases…</option></select>
+        </label>
+        <button class="btn" id="btn-load-kb" data-i18n="publish.refreshKb">Load from ServiceNow</button>
+        <label class="check"><input type="checkbox" id="attach-pptx"> <span data-i18n="publish.attachPptx">Attach original PPTX</span></label>
+        <button class="btn btn-primary" id="btn-publish" data-i18n="publish.create">Create draft article</button>
+      </div>
+      <p class="muted" data-i18n="publish.note">The article is created in Draft state. Publication goes through the normal ServiceNow review workflow.</p>
+      <div id="publish-result" class="result" hidden></div>
+    </div>
+
+    <div class="slides-toolbar row between wrap">
+      <h2 data-i18n="slides.title">Slides</h2>
+      <div class="row gap">
+        <label class="check"><input type="checkbox" id="filter-failed"> <span data-i18n="slides.onlyFailed">Only failed</span></label>
+        <label class="check"><input type="checkbox" id="show-original"> <span data-i18n="slides.showOriginal">Show extracted text</span></label>
+      </div>
+    </div>
+    <div id="slides"></div>
+  </section>
+</template>
+
+<template id="tpl-slide">
+  <article class="slide card">
+    <div class="slide-head row between">
+      <strong class="slide-no"></strong>
+      <span class="slide-status pill"></span>
+    </div>
+    <div class="slide-body">
+      <figure class="slide-image"><img loading="lazy" alt=""></figure>
+      <div class="slide-text">
+        <label><span data-i18n="slide.heading">Heading</span><input type="text" class="slide-title" maxlength="300"></label>
+        <label><span data-i18n="slide.description">Description (editable)</span>
+          <textarea class="slide-content" rows="14" dir="auto"></textarea>
+        </label>
+        <details class="slide-original" hidden><summary data-i18n="slide.original">Text extracted from PPTX</summary><pre dir="auto"></pre></details>
+        <details class="slide-structured" hidden><summary data-i18n="slide.structured">Structured model output</summary><pre dir="auto"></pre></details>
+        <div class="slide-error err" hidden></div>
+        <div class="row gap wrap">
+          <button class="btn btn-small btn-save" data-i18n="slide.save">Save</button>
+          <button class="btn btn-small btn-ghost btn-reset" data-i18n="slide.reset">Revert to AI text</button>
+          <button class="btn btn-small btn-ghost btn-retry" data-i18n="slide.retry">Re-run this slide</button>
+          <span class="muted slide-info"></span>
+        </div>
+      </div>
+    </div>
+  </article>
+</template>
+
+<template id="tpl-settings">
+  <section class="narrow">
+    <h1 data-i18n="settings.title">Settings</h1>
+    <p class="muted" data-i18n="settings.intro">Values set here override the server environment configuration. Secrets are stored in memory only and are never displayed.</p>
+
+    <form class="card" id="qwen-form">
+      <h2 data-i18n="settings.qwen">Qwen Vision API</h2>
+      <label><span data-i18n="settings.qwenUrl">API base URL (OpenAI-compatible, e.g. https://qwen.internal/v1)</span><input name="qwen_base_url" type="url" dir="ltr"></label>
+      <label><span data-i18n="settings.qwenModel">Model identifier</span><input name="qwen_model" dir="ltr"></label>
+      <div class="grid2">
+        <label><span data-i18n="settings.authHeader">Auth header name</span><input name="qwen_auth_header" dir="ltr"></label>
+        <label><span data-i18n="settings.authScheme">Auth scheme prefix (e.g. Bearer; empty = raw key)</span><input name="qwen_auth_scheme" dir="ltr"></label>
+      </div>
+      <label><span data-i18n="settings.apiKey">API key</span><input name="qwen_api_key" type="password" autocomplete="new-password" dir="ltr" placeholder="••••••"> <small class="muted secret-state" data-secret="qwen_api_key"></small></label>
+      <div class="grid3">
+        <label><span data-i18n="settings.timeout">Timeout (s)</span><input name="qwen_timeout_s" type="number" min="5" max="3600"></label>
+        <label><span data-i18n="settings.retries">Retries</span><input name="qwen_max_retries" type="number" min="0" max="10"></label>
+        <label><span data-i18n="settings.concurrency">Concurrency</span><input name="qwen_concurrency" type="number" min="1" max="32"></label>
+        <label><span data-i18n="settings.rate">Rate limit (req/min)</span><input name="qwen_rate_limit_per_min" type="number" min="0" max="10000"></label>
+        <label><span data-i18n="settings.maxTokens">Max tokens</span><input name="qwen_max_tokens" type="number" min="256" max="32768"></label>
+        <label><span data-i18n="settings.temperature">Temperature</span><input name="qwen_temperature" type="number" step="0.05" min="0" max="2"></label>
+      </div>
+      <label><span data-i18n="settings.prompt">System prompt</span><textarea name="qwen_system_prompt" rows="10" dir="ltr"></textarea></label>
+      <label><span data-i18n="settings.extraBody">Extra request body (JSON object, optional)</span><input name="qwen_extra_body_json" dir="ltr" placeholder='{"top_p": 0.9}'></label>
+      <div class="row gap">
+        <button class="btn btn-primary" type="submit" data-i18n="settings.save">Save</button>
+        <button class="btn" type="button" id="test-qwen" data-i18n="settings.test">Test connection</button>
+        <span class="muted" id="qwen-test-result"></span>
+      </div>
+    </form>
+
+    <form class="card" id="sn-form">
+      <h2 data-i18n="settings.sn">ServiceNow</h2>
+      <label><span data-i18n="settings.snUrl">Instance URL (e.g. https://servicenow.internal)</span><input name="servicenow_url" type="url" dir="ltr"></label>
+      <label><span data-i18n="settings.snAuth">Authentication</span>
+        <select name="servicenow_auth_type">
+          <option value="basic">Basic (username / password)</option>
+          <option value="bearer">Bearer token</option>
+          <option value="oauth_password">OAuth2 password grant</option>
+        </select>
+      </label>
+      <div class="grid2">
+        <label><span data-i18n="settings.username">Username</span><input name="servicenow_username" dir="ltr" autocomplete="off"></label>
+        <label><span data-i18n="settings.password">Password</span><input name="servicenow_password" type="password" autocomplete="new-password" dir="ltr" placeholder="••••••"> <small class="muted secret-state" data-secret="servicenow_password"></small></label>
+        <label><span data-i18n="settings.token">Bearer token</span><input name="servicenow_token" type="password" autocomplete="new-password" dir="ltr" placeholder="••••••"> <small class="muted secret-state" data-secret="servicenow_token"></small></label>
+        <label><span data-i18n="settings.oauthId">OAuth client id</span><input name="servicenow_oauth_client_id" dir="ltr"></label>
+        <label><span data-i18n="settings.oauthSecret">OAuth client secret</span><input name="servicenow_oauth_client_secret" type="password" autocomplete="new-password" dir="ltr" placeholder="••••••"> <small class="muted secret-state" data-secret="servicenow_oauth_client_secret"></small></label>
+        <label><span data-i18n="settings.timeout">Timeout (s)</span><input name="servicenow_timeout_s" type="number" min="5" max="3600"></label>
+      </div>
+      <label><span data-i18n="settings.defaultKb">Default knowledge base sys_id</span><input name="servicenow_default_kb" dir="ltr" pattern="[0-9a-fA-F]{0,32}"></label>
+      <label class="check"><input type="checkbox" name="servicenow_attach_pptx"> <span data-i18n="settings.attachPptx">Attach the original PPTX by default</span></label>
+      <label><span data-i18n="settings.extraFields">Extra kb_knowledge fields (JSON object, optional)</span><input name="servicenow_extra_fields_json" dir="ltr" placeholder='{"kb_category": "..."}'></label>
+      <div class="row gap">
+        <button class="btn btn-primary" type="submit" data-i18n="settings.save">Save</button>
+        <button class="btn" type="button" id="test-sn" data-i18n="settings.test">Test connection</button>
+        <span class="muted" id="sn-test-result"></span>
+      </div>
+    </form>
+
+    <div class="card">
+      <h2 data-i18n="settings.security">Network / TLS (server configuration, read-only)</h2>
+      <dl class="kv" id="security-info"></dl>
+    </div>
+  </section>
+</template>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
