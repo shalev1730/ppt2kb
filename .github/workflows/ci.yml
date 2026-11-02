@@ -1,0 +1,43 @@
+# GitHub Actions: run the full test suite (mock Qwen + mock ServiceNow, no network)
+# and build the Docker image on every push / pull request.
+name: ci
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: System dependencies (LibreOffice headless + Hebrew/Latin fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-impress libreoffice-draw \
+            fonts-dejavu-core fonts-liberation2 fonts-noto-core culmus fontconfig
+          fc-cache -f
+      - run: pip install -r requirements.txt -e ".[dev]"
+      - run: python -m pytest tests -v --durations=8
+      - name: Dependency audit + SBOM
+        run: |
+          pip-audit -r requirements.txt --strict || true
+          cyclonedx-py requirements requirements.txt -o sbom-ci.cdx.json
+      - uses: actions/upload-artifact@v4
+        with: { name: sbom, path: sbom-ci.cdx.json }
+  image:
+    runs-on: ubuntu-24.04
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the OCI image (same Dockerfile as the offline package)
+        run: docker build -f deploy/docker/Dockerfile -t ppt2kb:ci .
+      - name: Smoke test the image
+        run: |
+          docker run --rm ppt2kb:ci soffice --version
+          docker run --rm ppt2kb:ci python -c "import ppt2kb; print(ppt2kb.__version__)"
