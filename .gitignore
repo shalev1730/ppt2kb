@@ -1,0 +1,19 @@
+# build outputs and packages (delivered as release assets, not source)
+/build/
+/build-windows/
+/dist/
+/deploy/docker/wheelhouse/*.whl
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+# runtime data (never commit presentations, images or the SQLite store)
+/data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+# local configuration with credentials
+ppt2kb.env
+.env
