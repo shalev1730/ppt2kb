@@ -66,3 +66,35 @@ progress bars (replaced by the UI), `uv`-specific tooling.
   rendered in its final state.
 * Hebrew in the *legacy* `.ppt` binary format depends on LibreOffice's import
   filter quality; PPTX is recommended.
+
+## v1.1 decisions (embedded images, quality validation)
+
+* **Extraction is deterministic, not model-based.** Pictures come from the
+  PPTX package (`python-pptx`), so what is attached is exactly what the author
+  embedded. The model never decides which image to attach; it only writes the
+  text. Vector pictures, OLE objects, shapes and SmartArt have no raster
+  representation in the file, so they are reported as *unsupported* rather
+  than re-created from a screenshot — the requirement forbids silent
+  full-slide fallbacks.
+* **Filtering errs on the side of inclusion.** Exclusion requires strong,
+  largely independent signals (repetition across slides, degenerate shape,
+  uniform colour, background role, sub-1 % placement). A score ≥ 0 keeps the
+  picture. Small icons are therefore kept unless they repeat; a reviewer can
+  always exclude them, whereas a silently dropped screenshot would go unnoticed.
+* **Headings and file names prefer the PPTX title** over the model's title:
+  it is the author's wording, it is stable across retries, and it makes the
+  mapping slide → section → `NNN_title_KK.png` → attachment obvious.
+* **Validation is a gate, not a judge of style.** It only catches the failure
+  modes that make a section unusable (no JSON, truncated, loops, empty,
+  appearance-only, copied OCR, duplicate of the neighbour). Everything else is
+  left to the reviewer, who sees the warnings. A slide that fails after the
+  corrective retry is `needs_review`; it is never re-run automatically on
+  resume (that would loop on a model that cannot do better) and it blocks
+  publishing until a person accepts it.
+* **Per-presentation image mode** with a persistent default: the default
+  (`embedded`) is right for authored decks with screenshots; `full_slide`
+  remains for decks whose content is drawn with shapes/SmartArt, where the
+  render is the only faithful picture.
+* **Old presentations** (processed by 1.0) are not migrated eagerly; their
+  images are extracted lazily on publish or when the mode is re-selected.
+  Their article bodies are only rewritten when the user publishes again.

@@ -18,6 +18,7 @@ from typing import Any, Dict, Optional
 from .config import Settings, host_of
 from .llm.qwen import QwenConfig
 from .logging_utils import register_secret
+from .security import secretstore
 from .servicenow.client import ServiceNowConfig
 from .storage.db import Database
 
@@ -37,6 +38,9 @@ PUBLIC_KEYS: Dict[str, type] = {
     "qwen_temperature": float,
     "qwen_system_prompt": str,
     "qwen_extra_body_json": str,
+    "qwen_quality_retries": int,
+    "image_attachment_mode": str,
+    "ascii_filenames": bool,
     "servicenow_url": str,
     "servicenow_auth_type": str,
     "servicenow_username": str,
@@ -71,8 +75,13 @@ class RuntimeConfig:
             if settings.persist_ui_secrets:
                 stored = db.get_setting("secret:" + key)
                 if stored:
-                    register_secret(stored)
-                    self._secrets[key] = SecretState(stored, "ui")
+                    try:
+                        value = secretstore.unprotect(stored)
+                    except Exception as e:
+                        logger.warning("Stored secret %s could not be decrypted (%s); ignoring it", key, e.__class__.__name__)
+                        continue
+                    register_secret(value)
+                    self._secrets[key] = SecretState(value, "ui")
 
     # ------------------------------------------------------------ accessors
     def get(self, key: str) -> Any:
@@ -116,7 +125,7 @@ class RuntimeConfig:
                     register_secret(val)
                     self._secrets[key] = SecretState(val, "ui")
                 if self.settings.persist_ui_secrets:
-                    self.db.set_setting("secret:" + key, val)
+                    self.db.set_setting("secret:" + key, secretstore.protect(val))
                 continue
             if key not in PUBLIC_KEYS:
                 rejected.append(key)
@@ -130,6 +139,9 @@ class RuntimeConfig:
                     logger.warning("Rejected %s: host %s not in PPT2KB_ALLOWED_OUTBOUND_HOSTS", key, h)
                     rejected.append(key)
                     continue
+            if key == "image_attachment_mode" and str(val) not in ("embedded", "full_slide"):
+                rejected.append(key)
+                continue
             if key.endswith("_json") and val:
                 try:
                     parsed = json.loads(str(val))

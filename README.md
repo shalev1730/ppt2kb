@@ -1,9 +1,14 @@
 # ppt2kb — Secure on-premise PowerPoint → ServiceNow Knowledge
 
 ppt2kb turns a PowerPoint presentation into a reviewable **ServiceNow Knowledge
-article (Draft)**: every slide is rendered to an image, described by your
-internal **Qwen Vision** model, reviewed/edited in an internal web UI, and
-published with the original slide images attached. It is built on
+article (Draft)**: every slide is rendered to an image and explained by your
+internal **Qwen Vision** model as a technical knowledge section (purpose,
+components, procedures, key facts — not a description of how the slide
+looks); the pictures and screenshots embedded in the PPTX are extracted,
+filtered conservatively, previewed, and attached under the right section with
+meaningful file names (`004_משואה_750_01.png`); everything is reviewed/edited
+in an internal web UI (answers that fail validation are held for review) and
+then published as a draft. It is built on
 [ppt2desc](https://github.com/ALucek/ppt2desc) (MIT) and hardened for a closed
 enterprise network: no cloud SDKs, no telemetry, an outbound-host allow-list,
 isolated document conversion, and two deployment options built from the same
@@ -14,14 +19,31 @@ code base (Docker image, or a standalone Linux service).
                 │
                 ├─► LibreOffice (headless, isolated process)  PPT/PPTX → PDF
                 ├─► pdfium (in-process)                        PDF → PNG per slide
-                ├─► Qwen Vision API  (internal, OpenAI-compatible)   slide image → structured description
-                └─► ServiceNow Table + Attachment API (internal)      kb_knowledge draft + slide images
+                ├─► python-pptx (in-process)                   PPTX → embedded pictures (PNG/JPEG, crops, groups)
+                ├─► Qwen Vision API  (internal, OpenAI-compatible)   slide image + PPTX text → technical explanation (JSON)
+                ├─► quality validation                          retry with correction → needs-review queue
+                └─► ServiceNow Table + Attachment API (internal)      kb_knowledge draft + embedded images (or full slides)
 ```
+
+## Release packages (v1.1.0)
+
+| Package | What it is | Guide |
+|---|---|---|
+| `PPT2KB-Setup.exe` | Self-contained Windows 10/11 x64 installer: embedded Python, the application, LibreOffice headless + fonts. Install → desktop shortcut → browser UI on 127.0.0.1. No Python/Docker/LibreOffice needed on the PC. | [docs/INSTALL_WINDOWS.md](docs/INSTALL_WINDOWS.md) |
+| `ppt2kb-web-offline.tar` | Pre-built OCI/Docker image (`ppt2kb:1.1.0`) for the internal container host: `docker load`, configure `.env`, `docker compose up -d`. | [docs/DEPLOY_DOCKER_OFFLINE.md](docs/DEPLOY_DOCKER_OFFLINE.md) |
+| `ppt2kb-1.1.0-offline-py3.1x-x86_64.tar.gz` | Linux standalone service (no Docker) with all wheels, systemd unit and installer. | [docs/INSTALL_STANDALONE.md](docs/INSTALL_STANDALONE.md) |
+| `ppt2kb-1.1.0-src.tar.gz` | Complete source, tests, build scripts, SBOM. Rebuild any package with [docs/BUILD_REPRODUCIBLE.md](docs/BUILD_REPRODUCIBLE.md). | |
+
+All packages are built from this code base and provide the same UI and
+functionality. `SHA256SUMS` accompanies every delivery.
 
 | Document | Purpose |
 |---|---|
-| [docs/INSTALL_DOCKER.md](docs/INSTALL_DOCKER.md) | Option A – container image, Compose, offline image transfer |
-| [docs/INSTALL_STANDALONE.md](docs/INSTALL_STANDALONE.md) | Option B – Linux service without Docker (installer, systemd, upgrade) |
+| [docs/INSTALL_WINDOWS.md](docs/INSTALL_WINDOWS.md) | Windows desktop edition – install, configure, validate offline, uninstall |
+| [docs/DEPLOY_DOCKER_OFFLINE.md](docs/DEPLOY_DOCKER_OFFLINE.md) | Importing and running the pre-built image (exact commands: import, configure, start, stop, update) |
+| [docs/BUILD_REPRODUCIBLE.md](docs/BUILD_REPRODUCIBLE.md) | Reproducing both packages from source (for the security team) |
+| [docs/INSTALL_DOCKER.md](docs/INSTALL_DOCKER.md) | Building the image yourself, Compose reference, offline image transfer |
+| [docs/INSTALL_STANDALONE.md](docs/INSTALL_STANDALONE.md) | Linux service without Docker (installer, systemd, upgrade) |
 | [docs/AIRGAP.md](docs/AIRGAP.md) | Preparing and transferring artifacts into the air-gapped network |
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Every setting (Qwen, ServiceNow, TLS, limits, prompts) |
 | [docs/SERVICENOW.md](docs/SERVICENOW.md) | ServiceNow (Zurich) integration details, required roles, instance configuration |
@@ -74,6 +96,7 @@ complete sample files (no real credentials).
 ```
 src/ppt2kb/            application package
   app.py               FastAPI factory, auth/security middleware, startup checks
+  desktop.py           Windows desktop launcher (start server, open browser, --stop)
   api.py               REST API used by the UI
   config.py            settings (PPT2KB_* environment variables)
   runtime.py           effective config = env + UI overrides (secrets stay in memory)
@@ -90,6 +113,7 @@ mocks/                 mock Qwen and mock ServiceNow services (tests + offline P
 tests/                 pytest suite incl. 60-slide end-to-end scenario
 deploy/docker/         Dockerfile, docker-compose.yml, .env.example, entrypoint
 deploy/standalone/     install.sh, systemd unit, start/stop, config example
+deploy/windows/        NSIS installer script, launcher source, build-windows.sh, config template, tools
 scripts/               build-image, export/import-image, build-offline-bundle
 sbom/                  CycloneDX SBOM, dependency inventory, pip-audit result
 docs/                  documentation

@@ -71,15 +71,61 @@ class QwenConfig:
 
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+# runs of (escaped or real) blank lines / spaces - the signature of a small model stuck in a repetition loop
+_DEGENERATE_RE = re.compile(r"(?:\\n|\n|\\t|\t| ){12,}")
+_KEYS = "title|slide_kind|summary|details|procedures|key_facts|visible_text|uncertainties|language|confidence|technical_description|visuals_explanation"
+_PAIR_RE = re.compile(r'"(' + _KEYS + r')"\s*:\s*"((?:[^"\\]|\\.)*)"')
+# the field that was being written when the output was cut off (string never closed)
+_TAIL_RE = re.compile(r'"(' + _KEYS + r')"\s*:\s*"((?:[^"\\]|\\.)*)\s*$', re.DOTALL)
+
+
+def is_degenerate(text: str) -> bool:
+    """True when the answer looks like a runaway repetition (e.g. thousands of \\n)."""
+    if not text:
+        return False
+    m = _DEGENERATE_RE.search(text)
+    return bool(m) and len(m.group(0)) >= 40
+
+
+def _clean(text: str) -> str:
+    """Collapse runaway whitespace runs (inside JSON strings they are escaped as \\n)."""
+    text = re.sub(r"(?:\\n){3,}", r"\\n\\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"(?:\\t|\t){3,}", " ", text)
+    text = re.sub(r" {6,}", " ", text)
+    return text
+
+
+def _repair_truncated(text: str) -> Optional[dict]:
+    """Salvage the completed "key": "value" pairs of a JSON object that was cut off."""
+    pairs = _PAIR_RE.findall(text)
+    tail = _TAIL_RE.search(text)
+    if tail and tail.group(1) not in {k for k, _ in pairs}:
+        pairs.append((tail.group(1), tail.group(2).rstrip("\\")))
+    if not pairs:
+        return None
+    obj: dict = {}
+    for key, val in pairs:
+        try:
+            obj[key] = json.loads('"' + val + '"')
+        except Exception:
+            obj[key] = val.replace("\\n", "\n")
+    return obj
 
 
 def parse_description(text: str) -> SlideDescription:
-    """Parse the model answer into a :class:`SlideDescription`.
+    """Parse the model answer into a :class:`SlideDescription` (see :func:`parse_description_ex`)."""
+    return parse_description_ex(text)[0]
 
-    Tolerates markdown code fences and leading/trailing prose. Falls back to
+
+def parse_description_ex(text: str) -> tuple[SlideDescription, bool, bool]:
+    """Parse the model answer; returns (description, structured, salvaged).
+
+    Tolerates markdown code fences, leading/trailing prose, runaway whitespace
+    loops and truncated JSON (the completed fields are salvaged). Falls back to
     treating the whole answer as the technical description.
     """
-    raw = (text or "").strip()
+    raw = _clean((text or "").strip())
     candidate = raw
     fence = re.search(r"```(?:json)?\s*(.*?)```", raw, re.DOTALL)
     if fence:
@@ -97,8 +143,12 @@ def parse_description(text: str) -> SlideDescription:
                     break
                 except Exception:
                     obj = None
+    salvaged = False
+    if not isinstance(obj, dict) and raw.lstrip().startswith(("{", "```")):
+        obj = _repair_truncated(raw)
+        salvaged = obj is not None
     if not isinstance(obj, dict):
-        return SlideDescription(technical_description=raw, uncertainties="Model did not return structured JSON; raw answer kept.")
+        return SlideDescription(summary=raw[:20000], uncertainties="Model did not return structured JSON; raw answer kept."), False, False
     data = {}
     for key in SlideDescription.model_fields:
         v = obj.get(key, "")
@@ -108,8 +158,12 @@ def parse_description(text: str) -> SlideDescription:
             v = ""
         elif not isinstance(v, str):
             v = json.dumps(v, ensure_ascii=False)
-        data[key] = v
-    return SlideDescription(**data)
+        data[key] = v.strip() if isinstance(v, str) else v
+    desc = SlideDescription(**data).normalised()
+    if salvaged:
+        note = "Model answer was cut off (repetition loop); only the completed fields were kept - please verify against the slide image."
+        desc.uncertainties = (desc.uncertainties + "\n" + note).strip() if desc.uncertainties else note
+    return desc, True, salvaged
 
 
 class QwenClient:
@@ -151,7 +205,7 @@ class QwenClient:
         mime = "image/jpeg" if p.suffix.lower() in (".jpg", ".jpeg") else "image/png"
         return mime, base64.b64encode(p.read_bytes()).decode("ascii")
 
-    def _body(self, prompt: str, mime: str, b64: str) -> dict:
+    def _body(self, prompt: str, mime: str, b64: str, extra: Optional[dict] = None) -> dict:
         body = {
             "model": self.cfg.model,
             "messages": [
@@ -172,6 +226,8 @@ class QwenClient:
             body["response_format"] = {"type": "json_object"}
         if self.cfg.extra_body:
             body.update(self.cfg.extra_body)
+        if extra:
+            body.update(extra)
         return body
 
     def generate(self, prompt: str, image_path: Union[str, Path]) -> str:
@@ -183,8 +239,28 @@ class QwenClient:
         return self._request(prompt, mime, b64)
 
     def describe(self, prompt: str, image_path: Union[str, Path]) -> tuple[SlideDescription, str]:
-        raw = self.generate(prompt, image_path)
-        return parse_description(raw), raw
+        desc, raw, _, _ = self.describe_ex(prompt, image_path)
+        return desc, raw
+
+    def describe_ex(self, prompt: str, image_path: Union[str, Path]) -> tuple[SlideDescription, str, bool, bool]:
+        """Returns (description, raw answer, structured, salvaged)."""
+        p = Path(image_path)
+        if not p.is_file():
+            raise FileNotFoundError(f"Image file not found at {p}")
+        mime, b64 = self._encode_image(p)
+        raw = self._request(prompt, mime, b64)
+        if is_degenerate(raw):
+            # Small models sometimes fall into a whitespace/repetition loop until max_tokens.
+            # Ask once more with a frequency penalty (supported by vLLM, Ollama, OpenAI-compatible gateways).
+            logger.warning("Model answer looks like a repetition loop; retrying once with frequency_penalty")
+            try:
+                second = self._request(prompt, mime, b64, extra={"frequency_penalty": 0.6, "presence_penalty": 0.2})
+                if not is_degenerate(second):
+                    raw = second
+            except QwenError as e:
+                logger.info("Retry with frequency_penalty failed (%s); keeping the first answer", e)
+        desc, structured, salvaged = parse_description_ex(raw)
+        return desc, raw, structured, salvaged
 
     def ping(self) -> dict:
         """Connectivity test: GET /models if available, otherwise a tiny chat."""
@@ -210,12 +286,12 @@ class QwenClient:
             return {"ok": False, "detail": f"connection failed: {e.__class__.__name__}"}
 
     # ------------------------------------------------------------- internals
-    def _request(self, prompt: str, mime: str, b64: str) -> str:
+    def _request(self, prompt: str, mime: str, b64: str, extra: Optional[dict] = None) -> str:
         attempts = max(1, self.cfg.max_retries + 1)
         last: Optional[QwenError] = None
         for attempt in range(1, attempts + 1):
             try:
-                return self._once(prompt, mime, b64)
+                return self._once(prompt, mime, b64, extra)
             except QwenError as e:
                 last = e
                 if not e.retryable or attempt == attempts:
@@ -226,8 +302,8 @@ class QwenClient:
         assert last is not None
         raise last
 
-    def _once(self, prompt: str, mime: str, b64: str) -> str:
-        body = self._body(prompt, mime, b64)
+    def _once(self, prompt: str, mime: str, b64: str, extra: Optional[dict] = None) -> str:
+        body = self._body(prompt, mime, b64, extra)
         try:
             r = self._client.post(self.cfg.chat_url(), json=body)
         except httpx.TimeoutException as e:
@@ -240,7 +316,7 @@ class QwenClient:
                 if self._json_mode:
                     self._json_mode = False
                     logger.info("Endpoint rejected response_format; falling back to plain text mode")
-            return self._once(prompt, mime, b64)
+            return self._once(prompt, mime, b64, extra)
         if r.status_code in (408, 409, 425, 429, 500, 502, 503, 504):
             raise QwenError(f"HTTP {r.status_code}", status=r.status_code, retryable=True)
         if r.status_code >= 400:

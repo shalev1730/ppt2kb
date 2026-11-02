@@ -27,6 +27,8 @@ from ..config import Settings
 from ..converters import ConversionError, convert_pdf_to_images, convert_pptx_to_pdf
 from ..llm import QwenClient, ThreadSafeRateLimiter
 from ..llm.qwen import QwenError
+from ..extract import classify_images, extract_slide_images
+from ..llm.validate import is_blocking, validate_description
 from ..prompt import build_user_prompt
 from ..runtime import RuntimeConfig
 from ..schemas.deck import JobStatus, SlideData, SlideStatus
@@ -262,6 +264,37 @@ class JobRunner:
         self.db.upsert_slides(job_id, slides)
         title = job["title"] or (slides[0].title if slides and slides[0].title else "") or Path(job["display_name"]).stem
         self.db.update_job(job_id, slide_count=len(slides), title=title)
+        if job["source_kind"] == "pptx":
+            self.extract_images(job_id)
+
+    def extract_images(self, job_id: str) -> int:
+        """Extract the images embedded in the PPTX and classify them (returns number of images)."""
+        job = self.db.get_job(job_id)
+        if not job or job["source_kind"] != "pptx":
+            return 0
+        src = Path(job["source_path"])
+        if not src.is_file():
+            return 0
+        jd = self.job_dir(job_id)
+        emb_dir = jd / "images" / "emb"
+        shutil.rmtree(emb_dir, ignore_errors=True)
+        t0 = time.time()
+        try:
+            images = extract_slide_images(src, emb_dir, max_slides=self.settings.max_slides)
+            classes = classify_images(images, jd, max(1, job["slide_count"] or len({i.slide_number for i in images})))
+        except Exception as e:
+            logger.error("Job %s: embedded image extraction failed: %s", job_id, e.__class__.__name__)
+            return 0
+        rows = []
+        for img, c in zip(images, classes):
+            d = img.to_dict()
+            d["idx"] = d.pop("index")
+            d["placement"] = {"left": img.left, "top": img.top, "width": img.rel_width, "height": img.rel_height, "flip_h": img.flip_h, "flip_v": img.flip_v, "group_pictures": img.group_pictures}
+            d.update(c)
+            rows.append(d)
+        self.db.replace_slide_images(job_id, rows)
+        logger.info("Job %s: extracted %s embedded images (%s selected) in %.1fs", job_id, len(rows), sum(1 for r in rows if r["selected"]), time.time() - t0)
+        return len(rows)
 
     def _default_client_factory(self) -> QwenClient:
         return QwenClient(self.runtime.qwen_config(), str(self.runtime.get("qwen_system_prompt")))
@@ -275,7 +308,8 @@ class JobRunner:
             for s in todo:
                 self.db.update_slide(job_id, s.number, status=SlideStatus.pending, error=None)
         else:
-            todo = [s for s in all_slides if s.status != SlideStatus.done]
+            # needs_review slides are left for the reviewer (re-run them explicitly); done slides are kept
+            todo = [s for s in all_slides if s.status in (SlideStatus.pending, SlideStatus.failed, SlideStatus.processing)]
         if not todo:
             return
         self.db.update_job(job_id, status=JobStatus.describing, error=None)
@@ -286,6 +320,8 @@ class JobRunner:
         limiter = ThreadSafeRateLimiter(rate)
         deck_title = job["title"] or job["display_name"]
         total = len(all_slides)
+        titles = {s.number: (s.title or "") for s in all_slides}
+        quality_retries = max(0, int(self.runtime.get("qwen_quality_retries")))
         logger.info("Job %s: describing %s slides (concurrency %s, rate %s/min)", job_id, len(todo), concurrency, rate)
 
         def work(s: SlideData) -> None:
@@ -294,20 +330,39 @@ class JobRunner:
             self.db.update_slide(job_id, s.number, status=SlideStatus.processing)
             self.db.increment_attempts(job_id, s.number)
             extracted = "\n".join(x for x in (s.title, s.original_text) if x)
-            prompt = build_user_prompt(s.number, total, deck_title, extracted)
             image = self.job_dir(job_id) / s.image_ref
-            limiter.acquire()
+            prev = self.db.get_slide(job_id, s.number - 1) if s.number > 1 else None
+            prev_content = prev.content if prev and prev.status == SlideStatus.done else None
+            prev_original = "\n".join(x for x in (prev.title, prev.original_text) if x) if prev else None
+            best = None  # (n_blocking, desc, raw, issues)
+            issues: List[str] = []
             try:
-                desc, raw = client.describe(prompt, image)
-                content = desc.as_markdownish() or raw
+                for attempt in range(quality_retries + 1):
+                    prompt = build_user_prompt(s.number, total, deck_title, extracted,
+                                               prev_title=titles.get(s.number - 1, ""), next_title=titles.get(s.number + 1, ""),
+                                               issues=[i for i in issues if i in ("visual_only", "raw_ocr", "empty_summary", "truncated", "degenerate", "duplicate", "not_json")])
+                    limiter.acquire()
+                    desc, raw, structured, salvaged = client.describe_ex(prompt, image)
+                    issues = validate_description(desc, raw, original_text=extracted, previous_content=prev_content, previous_original=prev_original, salvaged=salvaged, structured=structured)
+                    n_block = sum(1 for i in issues if is_blocking([i]))
+                    if best is None or n_block < best[0]:
+                        best = (n_block, desc, raw, issues)
+                    if n_block == 0:
+                        break
+                    logger.info("Slide %s of job %s: answer rejected (%s); attempt %s/%s", s.number, job_id, ",".join(issues), attempt + 1, quality_retries + 1)
+                assert best is not None
+                n_block, desc, raw, issues = best
+                content = desc.as_markdownish() or (raw if not is_blocking(issues) else "")
                 self.db.update_slide(
                     job_id,
                     s.number,
-                    status=SlideStatus.done,
+                    status=SlideStatus.needs_review if n_block else SlideStatus.done,
                     content=content,
                     description=desc,
-                    title=(desc.title or s.title)[:300],
-                    error=None,
+                    title=(s.title or desc.title)[:300],  # prefer the editable PPTX title
+                    error=("quality: " + ", ".join(issues)) if n_block else None,
+                    quality=issues,
+                    reviewed=False,
                     model=client.model_name,
                     processed_at=now_iso(),
                 )
@@ -340,7 +395,14 @@ class JobRunner:
         if counts["done"] and counts["done"] == job["slide_count"]:
             # keep published status if the job was already published and only text changed
             self.db.update_job(job_id, status=JobStatus.ready, error=None)
-        elif counts["done"] or counts["failed"]:
-            self.db.update_job(job_id, status=JobStatus.partial, error=f"{counts['failed']} slide(s) failed, {counts['pending']} pending")
+        elif counts["done"] or counts["failed"] or counts.get("needs_review"):
+            parts = []
+            if counts["failed"]:
+                parts.append(f"{counts['failed']} slide(s) failed")
+            if counts.get("needs_review"):
+                parts.append(f"{counts['needs_review']} slide(s) need review")
+            if counts["pending"]:
+                parts.append(f"{counts['pending']} pending")
+            self.db.update_job(job_id, status=JobStatus.partial, error=", ".join(parts))
         else:
             self.db.update_job(job_id, status=JobStatus.interrupted, error="no slides processed")

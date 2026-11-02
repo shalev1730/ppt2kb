@@ -1,0 +1,2128 @@
+{
+  "components": [
+    {
+      "bom-ref": "requirements-L2",
+      "description": "requirements line 2: annotated-doc==0.0.5",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/annotated-doc/"
+        }
+      ],
+      "name": "annotated-doc",
+      "purl": "pkg:pypi/annotated-doc@0.0.5",
+      "type": "library",
+      "version": "0.0.5"
+    },
+    {
+      "bom-ref": "requirements-L3",
+      "description": "requirements line 3: annotated-types==0.8.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/annotated-types/"
+        }
+      ],
+      "name": "annotated-types",
+      "purl": "pkg:pypi/annotated-types@0.8.0",
+      "type": "library",
+      "version": "0.8.0"
+    },
+    {
+      "bom-ref": "requirements-L4",
+      "description": "requirements line 4: anyio==4.15.1",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/anyio/"
+        }
+      ],
+      "name": "anyio",
+      "purl": "pkg:pypi/anyio@4.15.1",
+      "type": "library",
+      "version": "4.15.1"
+    },
+    {
+      "bom-ref": "requirements-L5",
+      "description": "requirements line 5: certifi==2026.10.18",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/certifi/"
+        }
+      ],
+      "name": "certifi",
+      "purl": "pkg:pypi/certifi@2026.10.18",
+      "type": "library",
+      "version": "2026.10.18"
+    },
+    {
+      "bom-ref": "requirements-L6",
+      "description": "requirements line 6: click==8.5.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/click/"
+        }
+      ],
+      "name": "click",
+      "purl": "pkg:pypi/click@8.5.0",
+      "type": "library",
+      "version": "8.5.0"
+    },
+    {
+      "bom-ref": "requirements-L7",
+      "description": "requirements line 7: fastapi==0.162.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/fastapi/"
+        }
+      ],
+      "name": "fastapi",
+      "purl": "pkg:pypi/fastapi@0.162.0",
+      "type": "library",
+      "version": "0.162.0"
+    },
+    {
+      "bom-ref": "requirements-L8",
+      "description": "requirements line 8: h11==0.16.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/h11/"
+        }
+      ],
+      "name": "h11",
+      "purl": "pkg:pypi/h11@0.16.0",
+      "type": "library",
+      "version": "0.16.0"
+    },
+    {
+      "bom-ref": "requirements-L9",
+      "description": "requirements line 9: httpcore==1.0.9",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/httpcore/"
+        }
+      ],
+      "name": "httpcore",
+      "purl": "pkg:pypi/httpcore@1.0.9",
+      "type": "library",
+      "version": "1.0.9"
+    },
+    {
+      "bom-ref": "requirements-L10",
+      "description": "requirements line 10: httpx==0.28.1",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/httpx/"
+        }
+      ],
+      "name": "httpx",
+      "purl": "pkg:pypi/httpx@0.28.1",
+      "type": "library",
+      "version": "0.28.1"
+    },
+    {
+      "bom-ref": "requirements-L11",
+      "description": "requirements line 11: idna==3.20",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/idna/"
+        }
+      ],
+      "name": "idna",
+      "purl": "pkg:pypi/idna@3.20",
+      "type": "library",
+      "version": "3.20"
+    },
+    {
+      "bom-ref": "requirements-L12",
+      "description": "requirements line 12: lxml==6.1.3",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/lxml/"
+        }
+      ],
+      "name": "lxml",
+      "purl": "pkg:pypi/lxml@6.1.3",
+      "type": "library",
+      "version": "6.1.3"
+    },
+    {
+      "bom-ref": "requirements-L13",
+      "description": "requirements line 13: opentelemetry-api==1.45.2",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/opentelemetry-api/"
+        }
+      ],
+      "name": "opentelemetry-api",
+      "purl": "pkg:pypi/opentelemetry-api@1.45.2",
+      "type": "library",
+      "version": "1.45.2"
+    },
+    {
+      "bom-ref": "requirements-L14",
+      "description": "requirements line 14: pillow==13.0.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/pillow/"
+        }
+      ],
+      "name": "pillow",
+      "purl": "pkg:pypi/pillow@13.0.0",
+      "type": "library",
+      "version": "13.0.0"
+    },
+    {
+      "bom-ref": "requirements-L16",
+      "description": "requirements line 16: pydantic==2.13.5",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/pydantic/"
+        }
+      ],
+      "name": "pydantic",
+      "purl": "pkg:pypi/pydantic@2.13.5",
+      "type": "library",
+      "version": "2.13.5"
+    },
+    {
+      "bom-ref": "requirements-L15",
+      "description": "requirements line 15: pydantic-settings==2.16.2",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/pydantic-settings/"
+        }
+      ],
+      "name": "pydantic-settings",
+      "purl": "pkg:pypi/pydantic-settings@2.16.2",
+      "type": "library",
+      "version": "2.16.2"
+    },
+    {
+      "bom-ref": "requirements-L17",
+      "description": "requirements line 17: pydantic_core==2.46.5",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/pydantic_core/"
+        }
+      ],
+      "name": "pydantic_core",
+      "purl": "pkg:pypi/pydantic-core@2.46.5",
+      "type": "library",
+      "version": "2.46.5"
+    },
+    {
+      "bom-ref": "requirements-L18",
+      "description": "requirements line 18: pypdfium2==5.13.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/pypdfium2/"
+        }
+      ],
+      "name": "pypdfium2",
+      "purl": "pkg:pypi/pypdfium2@5.13.0",
+      "type": "library",
+      "version": "5.13.0"
+    },
+    {
+      "bom-ref": "requirements-L19",
+      "description": "requirements line 19: python-dotenv==1.2.3",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/python-dotenv/"
+        }
+      ],
+      "name": "python-dotenv",
+      "purl": "pkg:pypi/python-dotenv@1.2.3",
+      "type": "library",
+      "version": "1.2.3"
+    },
+    {
+      "bom-ref": "requirements-L20",
+      "description": "requirements line 20: python-multipart==0.0.32",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/python-multipart/"
+        }
+      ],
+      "name": "python-multipart",
+      "purl": "pkg:pypi/python-multipart@0.0.32",
+      "type": "library",
+      "version": "0.0.32"
+    },
+    {
+      "bom-ref": "requirements-L21",
+      "description": "requirements line 21: python-pptx==1.0.2",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/python-pptx/"
+        }
+      ],
+      "name": "python-pptx",
+      "purl": "pkg:pypi/python-pptx@1.0.2",
+      "type": "library",
+      "version": "1.0.2"
+    },
+    {
+      "bom-ref": "requirements-L22",
+      "description": "requirements line 22: starlette==1.7.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/starlette/"
+        }
+      ],
+      "name": "starlette",
+      "purl": "pkg:pypi/starlette@1.7.0",
+      "type": "library",
+      "version": "1.7.0"
+    },
+    {
+      "bom-ref": "requirements-L23",
+      "description": "requirements line 23: typing-inspection==0.4.4",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/typing-inspection/"
+        }
+      ],
+      "name": "typing-inspection",
+      "purl": "pkg:pypi/typing-inspection@0.4.4",
+      "type": "library",
+      "version": "0.4.4"
+    },
+    {
+      "bom-ref": "requirements-L24",
+      "description": "requirements line 24: typing_extensions==4.16.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/typing_extensions/"
+        }
+      ],
+      "name": "typing_extensions",
+      "purl": "pkg:pypi/typing-extensions@4.16.0",
+      "type": "library",
+      "version": "4.16.0"
+    },
+    {
+      "bom-ref": "requirements-L25",
+      "description": "requirements line 25: uvicorn==0.54.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/uvicorn/"
+        }
+      ],
+      "name": "uvicorn",
+      "purl": "pkg:pypi/uvicorn@0.54.0",
+      "type": "library",
+      "version": "0.54.0"
+    },
+    {
+      "bom-ref": "requirements-L26",
+      "description": "requirements line 26: xlsxwriter==3.2.9",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/xlsxwriter/"
+        }
+      ],
+      "name": "xlsxwriter",
+      "purl": "pkg:pypi/xlsxwriter@3.2.9",
+      "type": "library",
+      "version": "3.2.9"
+    },
+    {
+      "type": "platform",
+      "name": "python",
+      "version": "3.12.16",
+      "licenses": [
+        {
+          "license": {
+            "id": "PSF-2.0"
+          }
+        }
+      ],
+      "description": "python:3.12-slim-bookworm base image"
+    },
+    {
+      "type": "library",
+      "name": "adduser",
+      "version": "3.134",
+      "purl": "pkg:deb/debian/adduser@3.134?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "apt",
+      "version": "2.6.1",
+      "purl": "pkg:deb/debian/apt@2.6.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "operating-system",
+      "name": "base-files",
+      "version": "12.4+deb12u15",
+      "purl": "pkg:deb/debian/base-files@12.4+deb12u15?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "base-passwd",
+      "version": "3.6.1",
+      "purl": "pkg:deb/debian/base-passwd@3.6.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "bash",
+      "version": "5.2.15-2+b13",
+      "purl": "pkg:deb/debian/bash@5.2.15-2+b13?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "bsdutils",
+      "version": "1:2.38.1-5+deb12u3",
+      "purl": "pkg:deb/debian/bsdutils@1:2.38.1-5+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "ca-certificates",
+      "version": "20250419~deb12u2",
+      "purl": "pkg:deb/debian/ca-certificates@20250419~deb12u2?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "coreutils",
+      "version": "9.1-1",
+      "purl": "pkg:deb/debian/coreutils@9.1-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "culmus",
+      "version": "0.133-1",
+      "purl": "pkg:deb/debian/culmus@0.133-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "dash",
+      "version": "0.5.12-2",
+      "purl": "pkg:deb/debian/dash@0.5.12-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "debconf",
+      "version": "1.5.82",
+      "purl": "pkg:deb/debian/debconf@1.5.82?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "debian-archive-keyring",
+      "version": "2023.3+deb12u2",
+      "purl": "pkg:deb/debian/debian-archive-keyring@2023.3+deb12u2?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "debianutils",
+      "version": "5.7-0.5~deb12u1",
+      "purl": "pkg:deb/debian/debianutils@5.7-0.5~deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "diffutils",
+      "version": "1:3.8-4",
+      "purl": "pkg:deb/debian/diffutils@1:3.8-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "dirmngr",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/dirmngr@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "dpkg",
+      "version": "1.21.23",
+      "purl": "pkg:deb/debian/dpkg@1.21.23?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "e2fsprogs",
+      "version": "1.47.0-2+b2",
+      "purl": "pkg:deb/debian/e2fsprogs@1.47.0-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "findutils",
+      "version": "4.9.0-4",
+      "purl": "pkg:deb/debian/findutils@4.9.0-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fontconfig",
+      "version": "2.14.1-4",
+      "purl": "pkg:deb/debian/fontconfig@2.14.1-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fontconfig-config",
+      "version": "2.14.1-4",
+      "purl": "pkg:deb/debian/fontconfig-config@2.14.1-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fonts-crosextra-caladea",
+      "version": "20200211-1",
+      "purl": "pkg:deb/debian/fonts-crosextra-caladea@20200211-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fonts-crosextra-carlito",
+      "version": "20220224-1",
+      "purl": "pkg:deb/debian/fonts-crosextra-carlito@20220224-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fonts-dejavu-core",
+      "version": "2.37-6",
+      "purl": "pkg:deb/debian/fonts-dejavu-core@2.37-6?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fonts-liberation2",
+      "version": "2.1.5-1",
+      "purl": "pkg:deb/debian/fonts-liberation2@2.1.5-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fonts-noto-color-emoji",
+      "version": "2.042-0+deb12u1",
+      "purl": "pkg:deb/debian/fonts-noto-color-emoji@2.042-0+deb12u1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fonts-noto-core",
+      "version": "20201225-1",
+      "purl": "pkg:deb/debian/fonts-noto-core@20201225-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "fonts-opensymbol",
+      "version": "4:102.12+LibO7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/fonts-opensymbol@4:102.12+LibO7.4.7-1+deb12u14?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gcc-12-base",
+      "version": "12.2.0-14+deb12u1",
+      "purl": "pkg:deb/debian/gcc-12-base@12.2.0-14+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gnupg",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gnupg@2.2.40-1.1+deb12u2?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gnupg-l10n",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gnupg-l10n@2.2.40-1.1+deb12u2?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gnupg-utils",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gnupg-utils@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gpg",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gpg@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gpg-agent",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gpg-agent@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gpg-wks-client",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gpg-wks-client@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gpg-wks-server",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gpg-wks-server@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gpgconf",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gpgconf@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gpgsm",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gpgsm@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gpgv",
+      "version": "2.2.40-1.1+deb12u2",
+      "purl": "pkg:deb/debian/gpgv@2.2.40-1.1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "grep",
+      "version": "3.8-5",
+      "purl": "pkg:deb/debian/grep@3.8-5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "gzip",
+      "version": "1.12-1",
+      "purl": "pkg:deb/debian/gzip@1.12-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "hostname",
+      "version": "3.23+nmu1",
+      "purl": "pkg:deb/debian/hostname@3.23+nmu1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "init-system-helpers",
+      "version": "1.65.2+deb12u1",
+      "purl": "pkg:deb/debian/init-system-helpers@1.65.2+deb12u1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "iso-codes",
+      "version": "4.15.0-1",
+      "purl": "pkg:deb/debian/iso-codes@4.15.0-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libabsl20220623",
+      "version": "20220623.1-1+deb12u2",
+      "purl": "pkg:deb/debian/libabsl20220623@20220623.1-1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libacl1",
+      "version": "2.3.1-3",
+      "purl": "pkg:deb/debian/libacl1@2.3.1-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libapt-pkg6.0",
+      "version": "2.6.1",
+      "purl": "pkg:deb/debian/libapt-pkg6.0@2.6.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libassuan0",
+      "version": "2.5.5-5",
+      "purl": "pkg:deb/debian/libassuan0@2.5.5-5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libattr1",
+      "version": "1:2.5.1-4",
+      "purl": "pkg:deb/debian/libattr1@1:2.5.1-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libaudit-common",
+      "version": "1:3.0.9-1",
+      "purl": "pkg:deb/debian/libaudit-common@1:3.0.9-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libaudit1",
+      "version": "1:3.0.9-1",
+      "purl": "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libavahi-client3",
+      "version": "0.8-10+deb12u1",
+      "purl": "pkg:deb/debian/libavahi-client3@0.8-10+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libavahi-common-data",
+      "version": "0.8-10+deb12u1",
+      "purl": "pkg:deb/debian/libavahi-common-data@0.8-10+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libavahi-common3",
+      "version": "0.8-10+deb12u1",
+      "purl": "pkg:deb/debian/libavahi-common3@0.8-10+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libblkid1",
+      "version": "2.38.1-5+deb12u3",
+      "purl": "pkg:deb/debian/libblkid1@2.38.1-5+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libboost-filesystem1.74.0",
+      "version": "1.74.0+ds1-21",
+      "purl": "pkg:deb/debian/libboost-filesystem1.74.0@1.74.0+ds1-21?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libboost-iostreams1.74.0",
+      "version": "1.74.0+ds1-21",
+      "purl": "pkg:deb/debian/libboost-iostreams1.74.0@1.74.0+ds1-21?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libboost-locale1.74.0",
+      "version": "1.74.0+ds1-21",
+      "purl": "pkg:deb/debian/libboost-locale1.74.0@1.74.0+ds1-21?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libboost-thread1.74.0",
+      "version": "1.74.0+ds1-21",
+      "purl": "pkg:deb/debian/libboost-thread1.74.0@1.74.0+ds1-21?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libbox2d2",
+      "version": "2.4.1-3",
+      "purl": "pkg:deb/debian/libbox2d2@2.4.1-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libbrotli1",
+      "version": "1.0.9-2+deb12u1",
+      "purl": "pkg:deb/debian/libbrotli1@1.0.9-2+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libbsd0",
+      "version": "0.11.7-2",
+      "purl": "pkg:deb/debian/libbsd0@0.11.7-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libbz2-1.0",
+      "version": "1.0.8-5+b1",
+      "purl": "pkg:deb/debian/libbz2-1.0@1.0.8-5+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libc-bin",
+      "version": "2.36-9+deb12u14",
+      "purl": "pkg:deb/debian/libc-bin@2.36-9+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libc6",
+      "version": "2.36-9+deb12u14",
+      "purl": "pkg:deb/debian/libc6@2.36-9+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcairo2",
+      "version": "1.16.0-7",
+      "purl": "pkg:deb/debian/libcairo2@1.16.0-7?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcap-ng0",
+      "version": "0.8.3-1+b3",
+      "purl": "pkg:deb/debian/libcap-ng0@0.8.3-1+b3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcap2",
+      "version": "1:2.66-4+deb12u3+b1",
+      "purl": "pkg:deb/debian/libcap2@1:2.66-4+deb12u3+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcap2-bin",
+      "version": "1:2.66-4+deb12u3+b1",
+      "purl": "pkg:deb/debian/libcap2-bin@1:2.66-4+deb12u3+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcdr-0.1-1",
+      "version": "0.1.6-2+b2",
+      "purl": "pkg:deb/debian/libcdr-0.1-1@0.1.6-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libclucene-contribs1v5",
+      "version": "2.3.3.4+dfsg-1.1",
+      "purl": "pkg:deb/debian/libclucene-contribs1v5@2.3.3.4+dfsg-1.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libclucene-core1v5",
+      "version": "2.3.3.4+dfsg-1.1",
+      "purl": "pkg:deb/debian/libclucene-core1v5@2.3.3.4+dfsg-1.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcom-err2",
+      "version": "1.47.0-2+b2",
+      "purl": "pkg:deb/debian/libcom-err2@1.47.0-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcrypt1",
+      "version": "1:4.4.33-2",
+      "purl": "pkg:deb/debian/libcrypt1@1:4.4.33-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcups2",
+      "version": "2.4.2-3+deb12u9",
+      "purl": "pkg:deb/debian/libcups2@2.4.2-3+deb12u9?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libcurl3-gnutls",
+      "version": "7.88.1-10+deb12u15",
+      "purl": "pkg:deb/debian/libcurl3-gnutls@7.88.1-10+deb12u15?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libdb5.3",
+      "version": "5.3.28+dfsg2-1",
+      "purl": "pkg:deb/debian/libdb5.3@5.3.28+dfsg2-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libdbus-1-3",
+      "version": "1.14.10-1~deb12u1",
+      "purl": "pkg:deb/debian/libdbus-1-3@1.14.10-1~deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libdconf1",
+      "version": "0.40.0-4",
+      "purl": "pkg:deb/debian/libdconf1@0.40.0-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libdebconfclient0",
+      "version": "0.270",
+      "purl": "pkg:deb/debian/libdebconfclient0@0.270?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libdeflate0",
+      "version": "1.14-1",
+      "purl": "pkg:deb/debian/libdeflate0@1.14-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libdw1",
+      "version": "0.188-2.1",
+      "purl": "pkg:deb/debian/libdw1@0.188-2.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libelf1",
+      "version": "0.188-2.1",
+      "purl": "pkg:deb/debian/libelf1@0.188-2.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libeot0",
+      "version": "0.01-5+b1",
+      "purl": "pkg:deb/debian/libeot0@0.01-5+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libepoxy0",
+      "version": "1.5.10-1",
+      "purl": "pkg:deb/debian/libepoxy0@1.5.10-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libetonyek-0.1-1",
+      "version": "0.1.10-3+b1",
+      "purl": "pkg:deb/debian/libetonyek-0.1-1@0.1.10-3+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libexpat1",
+      "version": "2.5.0-1+deb12u5",
+      "purl": "pkg:deb/debian/libexpat1@2.5.0-1+deb12u5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libext2fs2",
+      "version": "1.47.0-2+b2",
+      "purl": "pkg:deb/debian/libext2fs2@1.47.0-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libexttextcat-2.0-0",
+      "version": "3.4.5-1",
+      "purl": "pkg:deb/debian/libexttextcat-2.0-0@3.4.5-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libexttextcat-data",
+      "version": "3.4.5-1",
+      "purl": "pkg:deb/debian/libexttextcat-data@3.4.5-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libffi8",
+      "version": "3.4.4-1",
+      "purl": "pkg:deb/debian/libffi8@3.4.4-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libfontconfig1",
+      "version": "2.14.1-4",
+      "purl": "pkg:deb/debian/libfontconfig1@2.14.1-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libfontenc1",
+      "version": "1:1.1.4-1",
+      "purl": "pkg:deb/debian/libfontenc1@1:1.1.4-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libfreehand-0.1-1",
+      "version": "0.1.2-3",
+      "purl": "pkg:deb/debian/libfreehand-0.1-1@0.1.2-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libfreetype6",
+      "version": "2.12.1+dfsg-5+deb12u4",
+      "purl": "pkg:deb/debian/libfreetype6@2.12.1+dfsg-5+deb12u4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgcc-s1",
+      "version": "12.2.0-14+deb12u1",
+      "purl": "pkg:deb/debian/libgcc-s1@12.2.0-14+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgcrypt20",
+      "version": "1.10.1-3+deb12u1",
+      "purl": "pkg:deb/debian/libgcrypt20@1.10.1-3+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgdbm6",
+      "version": "1.23-3",
+      "purl": "pkg:deb/debian/libgdbm6@1.23-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libglib2.0-0",
+      "version": "2.74.6-2+deb12u9",
+      "purl": "pkg:deb/debian/libglib2.0-0@2.74.6-2+deb12u9?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgmp10",
+      "version": "2:6.2.1+dfsg1-1.1",
+      "purl": "pkg:deb/debian/libgmp10@2:6.2.1+dfsg1-1.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgnutls30",
+      "version": "3.7.9-2+deb12u7",
+      "purl": "pkg:deb/debian/libgnutls30@3.7.9-2+deb12u7?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgpg-error0",
+      "version": "1.46-1",
+      "purl": "pkg:deb/debian/libgpg-error0@1.46-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgpgme11",
+      "version": "1.18.0-3+b1",
+      "purl": "pkg:deb/debian/libgpgme11@1.18.0-3+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgpgmepp6",
+      "version": "1.18.0-3+b1",
+      "purl": "pkg:deb/debian/libgpgmepp6@1.18.0-3+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgraphite2-3",
+      "version": "1.3.14-1+deb12u1",
+      "purl": "pkg:deb/debian/libgraphite2-3@1.3.14-1+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgssapi-krb5-2",
+      "version": "1.20.1-2+deb12u5",
+      "purl": "pkg:deb/debian/libgssapi-krb5-2@1.20.1-2+deb12u5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgstreamer-plugins-base1.0-0",
+      "version": "1.22.0-3+deb12u7",
+      "purl": "pkg:deb/debian/libgstreamer-plugins-base1.0-0@1.22.0-3+deb12u7?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libgstreamer1.0-0",
+      "version": "1.22.0-2+deb12u1",
+      "purl": "pkg:deb/debian/libgstreamer1.0-0@1.22.0-2+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libharfbuzz-icu0",
+      "version": "6.0.0+dfsg-3",
+      "purl": "pkg:deb/debian/libharfbuzz-icu0@6.0.0+dfsg-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libharfbuzz0b",
+      "version": "6.0.0+dfsg-3",
+      "purl": "pkg:deb/debian/libharfbuzz0b@6.0.0+dfsg-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libhogweed6",
+      "version": "3.8.1-2",
+      "purl": "pkg:deb/debian/libhogweed6@3.8.1-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libhunspell-1.7-0",
+      "version": "1.7.1-1",
+      "purl": "pkg:deb/debian/libhunspell-1.7-0@1.7.1-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libhyphen0",
+      "version": "2.8.8-7",
+      "purl": "pkg:deb/debian/libhyphen0@2.8.8-7?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libice6",
+      "version": "2:1.0.10-1",
+      "purl": "pkg:deb/debian/libice6@2:1.0.10-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libicu72",
+      "version": "72.1-3+deb12u1",
+      "purl": "pkg:deb/debian/libicu72@72.1-3+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libidn2-0",
+      "version": "2.3.3-1+b1",
+      "purl": "pkg:deb/debian/libidn2-0@2.3.3-1+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libjbig0",
+      "version": "2.1-6.1",
+      "purl": "pkg:deb/debian/libjbig0@2.1-6.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libjpeg62-turbo",
+      "version": "1:2.1.5-2",
+      "purl": "pkg:deb/debian/libjpeg62-turbo@1:2.1.5-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libk5crypto3",
+      "version": "1.20.1-2+deb12u5",
+      "purl": "pkg:deb/debian/libk5crypto3@1.20.1-2+deb12u5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libkeyutils1",
+      "version": "1.6.3-2",
+      "purl": "pkg:deb/debian/libkeyutils1@1.6.3-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libkrb5-3",
+      "version": "1.20.1-2+deb12u5",
+      "purl": "pkg:deb/debian/libkrb5-3@1.20.1-2+deb12u5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libkrb5support0",
+      "version": "1.20.1-2+deb12u5",
+      "purl": "pkg:deb/debian/libkrb5support0@1.20.1-2+deb12u5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libksba8",
+      "version": "1.6.3-2",
+      "purl": "pkg:deb/debian/libksba8@1.6.3-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liblangtag-common",
+      "version": "0.6.4-2",
+      "purl": "pkg:deb/debian/liblangtag-common@0.6.4-2?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liblangtag1",
+      "version": "0.6.4-2",
+      "purl": "pkg:deb/debian/liblangtag1@0.6.4-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liblcms2-2",
+      "version": "2.14-2+deb12u1",
+      "purl": "pkg:deb/debian/liblcms2-2@2.14-2+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libldap-2.5-0",
+      "version": "2.5.13+dfsg-5",
+      "purl": "pkg:deb/debian/libldap-2.5-0@2.5.13+dfsg-5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liblerc4",
+      "version": "4.0.0+ds-2",
+      "purl": "pkg:deb/debian/liblerc4@4.0.0+ds-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libltdl7",
+      "version": "2.4.7-7~deb12u1",
+      "purl": "pkg:deb/debian/libltdl7@2.4.7-7~deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liblz4-1",
+      "version": "1.9.4-1",
+      "purl": "pkg:deb/debian/liblz4-1@1.9.4-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liblzma5",
+      "version": "5.4.1-1+deb12u2",
+      "purl": "pkg:deb/debian/liblzma5@5.4.1-1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libmd0",
+      "version": "1.0.4-2",
+      "purl": "pkg:deb/debian/libmd0@1.0.4-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libmhash2",
+      "version": "0.9.9.9-9",
+      "purl": "pkg:deb/debian/libmhash2@0.9.9.9-9?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libmount1",
+      "version": "2.38.1-5+deb12u3",
+      "purl": "pkg:deb/debian/libmount1@2.38.1-5+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libmspub-0.1-1",
+      "version": "0.1.4-3+b3",
+      "purl": "pkg:deb/debian/libmspub-0.1-1@0.1.4-3+b3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libmwaw-0.3-3",
+      "version": "0.3.21-1",
+      "purl": "pkg:deb/debian/libmwaw-0.3-3@0.3.21-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libmythes-1.2-0",
+      "version": "2:1.2.5-1",
+      "purl": "pkg:deb/debian/libmythes-1.2-0@2:1.2.5-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libncursesw6",
+      "version": "6.4-4",
+      "purl": "pkg:deb/debian/libncursesw6@6.4-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libnettle8",
+      "version": "3.8.1-2",
+      "purl": "pkg:deb/debian/libnettle8@3.8.1-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libnghttp2-14",
+      "version": "1.52.0-1+deb12u3",
+      "purl": "pkg:deb/debian/libnghttp2-14@1.52.0-1+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libnpth0",
+      "version": "1.6-3",
+      "purl": "pkg:deb/debian/libnpth0@1.6-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libnsl2",
+      "version": "1.3.0-2",
+      "purl": "pkg:deb/debian/libnsl2@1.3.0-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libnspr4",
+      "version": "2:4.35-1",
+      "purl": "pkg:deb/debian/libnspr4@2:4.35-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libnss3",
+      "version": "2:3.87.1-1+deb12u4",
+      "purl": "pkg:deb/debian/libnss3@2:3.87.1-1+deb12u4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libnumbertext-1.0-0",
+      "version": "1.0.11-1",
+      "purl": "pkg:deb/debian/libnumbertext-1.0-0@1.0.11-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libnumbertext-data",
+      "version": "1.0.11-1",
+      "purl": "pkg:deb/debian/libnumbertext-data@1.0.11-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libodfgen-0.1-1",
+      "version": "0.1.8-2",
+      "purl": "pkg:deb/debian/libodfgen-0.1-1@0.1.8-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libopenjp2-7",
+      "version": "2.5.0-2+deb12u3",
+      "purl": "pkg:deb/debian/libopenjp2-7@2.5.0-2+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liborc-0.4-0",
+      "version": "1:0.4.33-2",
+      "purl": "pkg:deb/debian/liborc-0.4-0@1:0.4.33-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liborcus-0.17-0",
+      "version": "0.17.2-2+b2",
+      "purl": "pkg:deb/debian/liborcus-0.17-0@0.17.2-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "liborcus-parser-0.17-0",
+      "version": "0.17.2-2+b2",
+      "purl": "pkg:deb/debian/liborcus-parser-0.17-0@0.17.2-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libp11-kit0",
+      "version": "0.24.1-2",
+      "purl": "pkg:deb/debian/libp11-kit0@0.24.1-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpagemaker-0.0-0",
+      "version": "0.0.4-1",
+      "purl": "pkg:deb/debian/libpagemaker-0.0-0@0.0.4-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpam-modules",
+      "version": "1.5.2-6+deb12u2",
+      "purl": "pkg:deb/debian/libpam-modules@1.5.2-6+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpam-modules-bin",
+      "version": "1.5.2-6+deb12u2",
+      "purl": "pkg:deb/debian/libpam-modules-bin@1.5.2-6+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpam-runtime",
+      "version": "1.5.2-6+deb12u2",
+      "purl": "pkg:deb/debian/libpam-runtime@1.5.2-6+deb12u2?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpam0g",
+      "version": "1.5.2-6+deb12u2",
+      "purl": "pkg:deb/debian/libpam0g@1.5.2-6+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpcre2-8-0",
+      "version": "10.42-1+deb12u2",
+      "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpixman-1-0",
+      "version": "0.42.2-1",
+      "purl": "pkg:deb/debian/libpixman-1-0@0.42.2-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpng16-16",
+      "version": "1.6.39-2+deb12u6",
+      "purl": "pkg:deb/debian/libpng16-16@1.6.39-2+deb12u6?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpoppler126",
+      "version": "22.12.0-2+deb12u3",
+      "purl": "pkg:deb/debian/libpoppler126@22.12.0-2+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libpsl5",
+      "version": "0.21.2-1",
+      "purl": "pkg:deb/debian/libpsl5@0.21.2-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libqxp-0.0-0",
+      "version": "0.0.2-1+b3",
+      "purl": "pkg:deb/debian/libqxp-0.0-0@0.0.2-1+b3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libraptor2-0",
+      "version": "2.0.15-4+deb12u1",
+      "purl": "pkg:deb/debian/libraptor2-0@2.0.15-4+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "librasqal3",
+      "version": "0.9.33-2",
+      "purl": "pkg:deb/debian/librasqal3@0.9.33-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "librdf0",
+      "version": "1.0.17-3",
+      "purl": "pkg:deb/debian/librdf0@1.0.17-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libreadline8",
+      "version": "8.2-1.3",
+      "purl": "pkg:deb/debian/libreadline8@8.2-1.3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libreoffice-common",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libreoffice-common@4:7.4.7-1+deb12u14?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libreoffice-core",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libreoffice-core@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libreoffice-draw",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libreoffice-draw@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libreoffice-impress",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libreoffice-impress@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libreoffice-style-colibre",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libreoffice-style-colibre@4:7.4.7-1+deb12u14?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "librevenge-0.0-0",
+      "version": "0.0.5-3",
+      "purl": "pkg:deb/debian/librevenge-0.0-0@0.0.5-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "librtmp1",
+      "version": "2.4+20151223.gitfa8646d.1-2+b2",
+      "purl": "pkg:deb/debian/librtmp1@2.4+20151223.gitfa8646d.1-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsasl2-2",
+      "version": "2.1.28+dfsg-10+deb12u1",
+      "purl": "pkg:deb/debian/libsasl2-2@2.1.28+dfsg-10+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsasl2-modules-db",
+      "version": "2.1.28+dfsg-10+deb12u1",
+      "purl": "pkg:deb/debian/libsasl2-modules-db@2.1.28+dfsg-10+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libseccomp2",
+      "version": "2.5.4-1+deb12u1",
+      "purl": "pkg:deb/debian/libseccomp2@2.5.4-1+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libselinux1",
+      "version": "3.4-1+b6",
+      "purl": "pkg:deb/debian/libselinux1@3.4-1+b6?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsemanage-common",
+      "version": "3.4-1",
+      "purl": "pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsemanage2",
+      "version": "3.4-1+b5",
+      "purl": "pkg:deb/debian/libsemanage2@3.4-1+b5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsepol2",
+      "version": "3.4-2.1",
+      "purl": "pkg:deb/debian/libsepol2@3.4-2.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsm6",
+      "version": "2:1.2.3-1",
+      "purl": "pkg:deb/debian/libsm6@2:1.2.3-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsmartcols1",
+      "version": "2.38.1-5+deb12u3",
+      "purl": "pkg:deb/debian/libsmartcols1@2.38.1-5+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsqlite3-0",
+      "version": "3.40.1-2+deb12u2",
+      "purl": "pkg:deb/debian/libsqlite3-0@3.40.1-2+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libss2",
+      "version": "1.47.0-2+b2",
+      "purl": "pkg:deb/debian/libss2@1.47.0-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libssh2-1",
+      "version": "1.10.0-3+deb12u1",
+      "purl": "pkg:deb/debian/libssh2-1@1.10.0-3+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libssl3",
+      "version": "3.0.22-1~deb12u2",
+      "purl": "pkg:deb/debian/libssl3@3.0.22-1~deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libstaroffice-0.0-0",
+      "version": "0.0.7-1",
+      "purl": "pkg:deb/debian/libstaroffice-0.0-0@0.0.7-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libstdc++6",
+      "version": "12.2.0-14+deb12u1",
+      "purl": "pkg:deb/debian/libstdc++6@12.2.0-14+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libsystemd0",
+      "version": "252.39-1~deb12u2",
+      "purl": "pkg:deb/debian/libsystemd0@252.39-1~deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libtasn1-6",
+      "version": "4.19.0-2+deb12u1",
+      "purl": "pkg:deb/debian/libtasn1-6@4.19.0-2+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libtiff6",
+      "version": "4.5.0-6+deb12u4",
+      "purl": "pkg:deb/debian/libtiff6@4.5.0-6+deb12u4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libtinfo6",
+      "version": "6.4-4",
+      "purl": "pkg:deb/debian/libtinfo6@6.4-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libtirpc-common",
+      "version": "1.3.3+ds-1",
+      "purl": "pkg:deb/debian/libtirpc-common@1.3.3+ds-1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libtirpc3",
+      "version": "1.3.3+ds-1",
+      "purl": "pkg:deb/debian/libtirpc3@1.3.3+ds-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libudev1",
+      "version": "252.39-1~deb12u2",
+      "purl": "pkg:deb/debian/libudev1@252.39-1~deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libunistring2",
+      "version": "1.0-2",
+      "purl": "pkg:deb/debian/libunistring2@1.0-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libuno-cppu3",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libuno-cppu3@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libuno-cppuhelpergcc3-3",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libuno-cppuhelpergcc3-3@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libuno-purpenvhelpergcc3-3",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libuno-purpenvhelpergcc3-3@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libuno-sal3",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libuno-sal3@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libuno-salhelpergcc3-3",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/libuno-salhelpergcc3-3@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libunwind8",
+      "version": "1.6.2-3",
+      "purl": "pkg:deb/debian/libunwind8@1.6.2-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libuuid1",
+      "version": "2.38.1-5+deb12u3",
+      "purl": "pkg:deb/debian/libuuid1@2.38.1-5+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libvisio-0.1-1",
+      "version": "0.1.7-1+b3",
+      "purl": "pkg:deb/debian/libvisio-0.1-1@0.1.7-1+b3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libwebp7",
+      "version": "1.2.4-0.2+deb12u1",
+      "purl": "pkg:deb/debian/libwebp7@1.2.4-0.2+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libwpd-0.10-10",
+      "version": "0.10.3-2+b1",
+      "purl": "pkg:deb/debian/libwpd-0.10-10@0.10.3-2+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libwpg-0.3-3",
+      "version": "0.3.3-1",
+      "purl": "pkg:deb/debian/libwpg-0.3-3@0.3.3-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libx11-6",
+      "version": "2:1.8.4-2+deb12u2",
+      "purl": "pkg:deb/debian/libx11-6@2:1.8.4-2+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libx11-data",
+      "version": "2:1.8.4-2+deb12u2",
+      "purl": "pkg:deb/debian/libx11-data@2:1.8.4-2+deb12u2?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libx11-xcb1",
+      "version": "2:1.8.4-2+deb12u2",
+      "purl": "pkg:deb/debian/libx11-xcb1@2:1.8.4-2+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxau6",
+      "version": "1:1.0.9-1",
+      "purl": "pkg:deb/debian/libxau6@1:1.0.9-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxcb-render0",
+      "version": "1.15-1",
+      "purl": "pkg:deb/debian/libxcb-render0@1.15-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxcb-shm0",
+      "version": "1.15-1",
+      "purl": "pkg:deb/debian/libxcb-shm0@1.15-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxcb1",
+      "version": "1.15-1",
+      "purl": "pkg:deb/debian/libxcb1@1.15-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxdmcp6",
+      "version": "1:1.1.2-3",
+      "purl": "pkg:deb/debian/libxdmcp6@1:1.1.2-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxext6",
+      "version": "2:1.3.4-1+b1",
+      "purl": "pkg:deb/debian/libxext6@2:1.3.4-1+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxinerama1",
+      "version": "2:1.1.4-3",
+      "purl": "pkg:deb/debian/libxinerama1@2:1.1.4-3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxml2",
+      "version": "2.9.14+dfsg-1.3~deb12u6",
+      "purl": "pkg:deb/debian/libxml2@2.9.14+dfsg-1.3~deb12u6?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxmlsec1",
+      "version": "1.2.37-2",
+      "purl": "pkg:deb/debian/libxmlsec1@1.2.37-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxmlsec1-nss",
+      "version": "1.2.37-2",
+      "purl": "pkg:deb/debian/libxmlsec1-nss@1.2.37-2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxrandr2",
+      "version": "2:1.5.2-2+b1",
+      "purl": "pkg:deb/debian/libxrandr2@2:1.5.2-2+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxrender1",
+      "version": "1:0.9.10-1.1",
+      "purl": "pkg:deb/debian/libxrender1@1:0.9.10-1.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxslt1.1",
+      "version": "1.1.35-1+deb12u4",
+      "purl": "pkg:deb/debian/libxslt1.1@1.1.35-1+deb12u4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libxxhash0",
+      "version": "0.8.1-1",
+      "purl": "pkg:deb/debian/libxxhash0@0.8.1-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libyajl2",
+      "version": "2.1.0-3+deb12u2",
+      "purl": "pkg:deb/debian/libyajl2@2.1.0-3+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libzmf-0.0-0",
+      "version": "0.0.2-1+b5",
+      "purl": "pkg:deb/debian/libzmf-0.0-0@0.0.2-1+b5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libzstd1",
+      "version": "1.5.4+dfsg2-5",
+      "purl": "pkg:deb/debian/libzstd1@1.5.4+dfsg2-5?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "libzxing2",
+      "version": "1.4.0-3+b1",
+      "purl": "pkg:deb/debian/libzxing2@1.4.0-3+b1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "login",
+      "version": "1:4.13+dfsg1-1+deb12u2",
+      "purl": "pkg:deb/debian/login@1:4.13+dfsg1-1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "logsave",
+      "version": "1.47.0-2+b2",
+      "purl": "pkg:deb/debian/logsave@1.47.0-2+b2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "mawk",
+      "version": "1.3.4.20200120-3.1",
+      "purl": "pkg:deb/debian/mawk@1.3.4.20200120-3.1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "mount",
+      "version": "2.38.1-5+deb12u3",
+      "purl": "pkg:deb/debian/mount@2.38.1-5+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "ncurses-base",
+      "version": "6.4-4",
+      "purl": "pkg:deb/debian/ncurses-base@6.4-4?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "ncurses-bin",
+      "version": "6.4-4",
+      "purl": "pkg:deb/debian/ncurses-bin@6.4-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "netbase",
+      "version": "6.4",
+      "purl": "pkg:deb/debian/netbase@6.4?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "openssl",
+      "version": "3.0.22-1~deb12u2",
+      "purl": "pkg:deb/debian/openssl@3.0.22-1~deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "passwd",
+      "version": "1:4.13+dfsg1-1+deb12u2",
+      "purl": "pkg:deb/debian/passwd@1:4.13+dfsg1-1+deb12u2?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "perl-base",
+      "version": "5.36.0-7+deb12u4",
+      "purl": "pkg:deb/debian/perl-base@5.36.0-7+deb12u4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "pinentry-curses",
+      "version": "1.2.1-1",
+      "purl": "pkg:deb/debian/pinentry-curses@1.2.1-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "readline-common",
+      "version": "8.2-1.3",
+      "purl": "pkg:deb/debian/readline-common@8.2-1.3?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "sed",
+      "version": "4.9-1+deb12u1",
+      "purl": "pkg:deb/debian/sed@4.9-1+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "sensible-utils",
+      "version": "0.0.17+nmu1",
+      "purl": "pkg:deb/debian/sensible-utils@0.0.17+nmu1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "sysvinit-utils",
+      "version": "3.06-4",
+      "purl": "pkg:deb/debian/sysvinit-utils@3.06-4?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "tar",
+      "version": "1.34+dfsg-1.2+deb12u1",
+      "purl": "pkg:deb/debian/tar@1.34+dfsg-1.2+deb12u1?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "tini",
+      "version": "0.19.0-1+b3",
+      "purl": "pkg:deb/debian/tini@0.19.0-1+b3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "tzdata",
+      "version": "2026e-0+deb12u1",
+      "purl": "pkg:deb/debian/tzdata@2026e-0+deb12u1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "ucf",
+      "version": "3.0043+nmu1+deb12u1",
+      "purl": "pkg:deb/debian/ucf@3.0043+nmu1+deb12u1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "uno-libs-private",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/uno-libs-private@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "ure",
+      "version": "4:7.4.7-1+deb12u14",
+      "purl": "pkg:deb/debian/ure@4:7.4.7-1+deb12u14?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "usr-is-merged",
+      "version": "37~deb12u1",
+      "purl": "pkg:deb/debian/usr-is-merged@37~deb12u1?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "util-linux",
+      "version": "2.38.1-5+deb12u3",
+      "purl": "pkg:deb/debian/util-linux@2.38.1-5+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "util-linux-extra",
+      "version": "2.38.1-5+deb12u3",
+      "purl": "pkg:deb/debian/util-linux-extra@2.38.1-5+deb12u3?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "x11-common",
+      "version": "1:7.7+23",
+      "purl": "pkg:deb/debian/x11-common@1:7.7+23?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "xfonts-encodings",
+      "version": "1:1.0.4-2.2",
+      "purl": "pkg:deb/debian/xfonts-encodings@1:1.0.4-2.2?arch=all&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "xfonts-utils",
+      "version": "1:7.7+6",
+      "purl": "pkg:deb/debian/xfonts-utils@1:7.7+6?arch=amd64&distro=debian-12"
+    },
+    {
+      "type": "library",
+      "name": "zlib1g",
+      "version": "1:1.2.13.dfsg-1",
+      "purl": "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=amd64&distro=debian-12"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "requirements-L10"
+    },
+    {
+      "ref": "requirements-L11"
+    },
+    {
+      "ref": "requirements-L12"
+    },
+    {
+      "ref": "requirements-L13"
+    },
+    {
+      "ref": "requirements-L14"
+    },
+    {
+      "ref": "requirements-L15"
+    },
+    {
+      "ref": "requirements-L16"
+    },
+    {
+      "ref": "requirements-L17"
+    },
+    {
+      "ref": "requirements-L18"
+    },
+    {
+      "ref": "requirements-L19"
+    },
+    {
+      "ref": "requirements-L2"
+    },
+    {
+      "ref": "requirements-L20"
+    },
+    {
+      "ref": "requirements-L21"
+    },
+    {
+      "ref": "requirements-L22"
+    },
+    {
+      "ref": "requirements-L23"
+    },
+    {
+      "ref": "requirements-L24"
+    },
+    {
+      "ref": "requirements-L25"
+    },
+    {
+      "ref": "requirements-L26"
+    },
+    {
+      "ref": "requirements-L3"
+    },
+    {
+      "ref": "requirements-L4"
+    },
+    {
+      "ref": "requirements-L5"
+    },
+    {
+      "ref": "requirements-L6"
+    },
+    {
+      "ref": "requirements-L7"
+    },
+    {
+      "ref": "requirements-L8"
+    },
+    {
+      "ref": "requirements-L9"
+    }
+  ],
+  "metadata": {
+    "timestamp": "2026-11-01T20:03:15.207079+00:00",
+    "tools": {
+      "components": [
+        {
+          "description": "CycloneDX Software Bill of Materials (SBOM) generator for Python projects and environments",
+          "externalReferences": [
+            {
+              "type": "build-system",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/actions"
+            },
+            {
+              "type": "distribution",
+              "url": "https://pypi.org/project/cyclonedx-bom/"
+            },
+            {
+              "type": "documentation",
+              "url": "https://cyclonedx-bom-tool.readthedocs.io/"
+            },
+            {
+              "type": "issue-tracker",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/issues"
+            },
+            {
+              "type": "license",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/blob/main/LICENSE"
+            },
+            {
+              "type": "release-notes",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/blob/main/CHANGELOG.md"
+            },
+            {
+              "type": "vcs",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/"
+            },
+            {
+              "type": "website",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/#readme"
+            }
+          ],
+          "group": "CycloneDX",
+          "licenses": [
+            {
+              "license": {
+                "acknowledgement": "declared",
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "name": "cyclonedx-py",
+          "type": "application",
+          "version": "7.6.0"
+        },
+        {
+          "description": "Python library for CycloneDX",
+          "externalReferences": [
+            {
+              "type": "build-system",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/actions"
+            },
+            {
+              "type": "distribution",
+              "url": "https://pypi.org/project/cyclonedx-python-lib/"
+            },
+            {
+              "type": "documentation",
+              "url": "https://cyclonedx-python-library.readthedocs.io/"
+            },
+            {
+              "type": "issue-tracker",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/issues"
+            },
+            {
+              "type": "license",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/blob/main/LICENSE"
+            },
+            {
+              "type": "release-notes",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/blob/main/CHANGELOG.md"
+            },
+            {
+              "type": "vcs",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib"
+            },
+            {
+              "type": "website",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/#readme"
+            }
+          ],
+          "group": "CycloneDX",
+          "licenses": [
+            {
+              "license": {
+                "acknowledgement": "declared",
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "name": "cyclonedx-python-lib",
+          "type": "library",
+          "version": "11.12.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "container",
+      "name": "ppt2kb",
+      "version": "1.1.0",
+      "purl": "pkg:oci/ppt2kb@sha256:9f166cfa7e2982069f673f029a0113b3a82d57ded43c984772ec9ab9c5061b90?tag=1.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4c46f35507221b3fb6d8d752df8d5b631edc55a634f5ae70e185fd9a278726a6"
+        }
+      ],
+      "description": "ppt2kb-web-offline.tar (docker-archive), base python:3.12-slim-bookworm"
+    }
+  },
+  "serialNumber": "urn:uuid:af09f3c9-d852-45cd-a093-1659f60f93f6",
+  "version": 1,
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6"
+}

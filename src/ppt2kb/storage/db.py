@@ -61,6 +61,35 @@ CREATE TABLE IF NOT EXISTS slides (
     PRIMARY KEY (job_id, number),
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS slide_images (
+    job_id TEXT NOT NULL,
+    slide_number INTEGER NOT NULL,
+    idx INTEGER NOT NULL,
+    file_ref TEXT NOT NULL DEFAULT '',
+    file_ext TEXT NOT NULL DEFAULT '',
+    original_ext TEXT NOT NULL DEFAULT '',
+    sha256 TEXT NOT NULL DEFAULT '',
+    width INTEGER NOT NULL DEFAULT 0,
+    height INTEGER NOT NULL DEFAULT 0,
+    shape_name TEXT NOT NULL DEFAULT '',
+    source_kind TEXT NOT NULL DEFAULT '',
+    placement_json TEXT NOT NULL DEFAULT '{}',
+    cropped INTEGER NOT NULL DEFAULT 0,
+    rotation REAL NOT NULL DEFAULT 0,
+    in_group INTEGER NOT NULL DEFAULT 0,
+    reuse_count INTEGER NOT NULL DEFAULT 1,
+    supported INTEGER NOT NULL DEFAULT 1,
+    selected INTEGER NOT NULL DEFAULT 1,
+    auto_selected INTEGER NOT NULL DEFAULT 1,
+    score REAL NOT NULL DEFAULT 0,
+    reasons_json TEXT NOT NULL DEFAULT '[]',
+    flagged INTEGER NOT NULL DEFAULT 0,
+    note TEXT NOT NULL DEFAULT '',
+    file_name TEXT NOT NULL DEFAULT '',
+    attachment_sys_id TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (job_id, slide_number, idx),
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -85,6 +114,15 @@ class Database:
         self._conn.execute("PRAGMA synchronous=NORMAL")
         with self._lock:
             self._conn.executescript(SCHEMA)
+            self._migrate()
+
+    def _migrate(self) -> None:
+        """Add columns introduced after 1.0 to databases created by older versions."""
+        cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(slides)").fetchall()}
+        if "quality_json" not in cols:
+            self._conn.execute("ALTER TABLE slides ADD COLUMN quality_json TEXT NOT NULL DEFAULT '[]'")
+        if "reviewed" not in cols:
+            self._conn.execute("ALTER TABLE slides ADD COLUMN reviewed INTEGER NOT NULL DEFAULT 0")
 
     def close(self) -> None:
         with self._lock:
@@ -143,6 +181,7 @@ class Database:
         return [self._job_row(r) for r in rows]
 
     def delete_job(self, job_id: str) -> None:
+        self._exec("DELETE FROM slide_images WHERE job_id = ?", (job_id,))
         self._exec("DELETE FROM slides WHERE job_id = ?", (job_id,))
         self._exec("DELETE FROM jobs WHERE id = ?", (job_id,))
 
@@ -182,6 +221,10 @@ class Database:
         if "description" in fields:
             d = fields.pop("description")
             fields["description_json"] = d.model_dump_json() if d is not None else None
+        if "quality" in fields:
+            fields["quality_json"] = json.dumps(list(fields.pop("quality") or []))
+        if "reviewed" in fields:
+            fields["reviewed"] = int(bool(fields["reviewed"]))
         cols = ", ".join(f"{k} = ?" for k in fields)
         self._exec(f"UPDATE slides SET {cols} WHERE job_id = ? AND number = ?", (*fields.values(), job_id, number))
 
@@ -214,7 +257,9 @@ class Database:
         d.pop("attachment_sys_id", None)
         d["presentation_id"] = d.pop("job_id")
         d["status"] = SlideStatus(d["status"])
-        d["description"] = SlideDescription.model_validate_json(desc) if desc else None
+        d["description"] = SlideDescription.model_validate_json(desc).normalised() if desc else None
+        d["quality"] = json.loads(d.pop("quality_json", "[]") or "[]")
+        d["reviewed"] = bool(d.pop("reviewed", 0))
         return SlideData(**d)
 
     # ------------------------------------------------------------------ deck
@@ -237,7 +282,57 @@ class Database:
             updated_at=job["updated_at"],
             source_sha256=job["source_sha256"],
             servicenow=job["servicenow"],
+            image_mode=(job.get("options") or {}).get("image_mode", "embedded"),
         )
+
+    # ---------------------------------------------------------- slide images
+    def replace_slide_images(self, job_id: str, rows: Iterable[dict]) -> None:
+        """Store the extracted images of a job (keeps manual selections of unchanged assets)."""
+        with self._lock:
+            previous = {(r["slide_number"], r["sha256"], r["idx"]): r for r in self.get_slide_images(job_id)}
+            self._conn.execute("DELETE FROM slide_images WHERE job_id = ?", (job_id,))
+            for r in rows:
+                old = previous.get((r["slide_number"], r["sha256"], r["idx"]))
+                selected = old["selected"] if old and old.get("selected") != old.get("auto_selected") else r["selected"]
+                self._conn.execute(
+                    "INSERT INTO slide_images (job_id, slide_number, idx, file_ref, file_ext, original_ext, sha256, width, height, shape_name, "
+                    "source_kind, placement_json, cropped, rotation, in_group, reuse_count, supported, selected, auto_selected, score, reasons_json, "
+                    "flagged, note, file_name, attachment_sys_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (job_id, r["slide_number"], r["idx"], r.get("file_ref", ""), r.get("file_ext", ""), r.get("original_ext", ""), r["sha256"],
+                     r.get("width", 0), r.get("height", 0), r.get("shape_name", ""), r.get("source_kind", ""), json.dumps(r.get("placement", {})),
+                     int(bool(r.get("cropped"))), float(r.get("rotation", 0) or 0), int(bool(r.get("in_group"))), int(r.get("reuse_count", 1)),
+                     int(bool(r.get("supported", True))), int(bool(selected)), int(bool(r["selected"])), float(r.get("score", 0) or 0),
+                     json.dumps(r.get("reasons", [])), int(bool(r.get("flagged"))), r.get("note", ""), r.get("file_name", ""),
+                     old["attachment_sys_id"] if old else ""),
+                )
+
+    def get_slide_images(self, job_id: str, slide_number: Optional[int] = None) -> List[dict]:
+        if slide_number is None:
+            rows = self._all("SELECT * FROM slide_images WHERE job_id = ? ORDER BY slide_number, idx", (job_id,))
+        else:
+            rows = self._all("SELECT * FROM slide_images WHERE job_id = ? AND slide_number = ? ORDER BY idx", (job_id, slide_number))
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["placement"] = json.loads(d.pop("placement_json") or "{}")
+            d["reasons"] = json.loads(d.pop("reasons_json") or "[]")
+            for k in ("cropped", "in_group", "supported", "selected", "auto_selected", "flagged"):
+                d[k] = bool(d[k])
+            out.append(d)
+        return out
+
+    def update_slide_image(self, job_id: str, slide_number: int, idx: int, **fields: Any) -> None:
+        if not fields:
+            return
+        for k in ("selected", "flagged"):
+            if k in fields:
+                fields[k] = int(bool(fields[k]))
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        self._exec(f"UPDATE slide_images SET {cols} WHERE job_id = ? AND slide_number = ? AND idx = ?", (*fields.values(), job_id, slide_number, idx))
+
+    def image_attachment_map(self, job_id: str) -> Dict[tuple, str]:
+        rows = self._all("SELECT slide_number, idx, attachment_sys_id FROM slide_images WHERE job_id = ? AND attachment_sys_id != ''", (job_id,))
+        return {(r["slide_number"], r["idx"]): r["attachment_sys_id"] for r in rows}
 
     # -------------------------------------------------------------- settings
     def get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:

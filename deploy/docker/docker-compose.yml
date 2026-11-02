@@ -8,7 +8,7 @@
 
 services:
   ppt2kb:
-    image: ${PPT2KB_IMAGE:-ppt2kb:1.0.0}
+    image: ${PPT2KB_IMAGE:-ppt2kb:1.1.0}
     container_name: ppt2kb
     restart: unless-stopped
     env_file:

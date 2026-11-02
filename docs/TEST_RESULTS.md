@@ -3,13 +3,17 @@
 ## What was executed
 
 Environment: Ubuntu 24.04 (x86_64), Python 3.13.18, LibreOffice 24.2.7.2,
-pypdfium2 5.13.0, Pillow 13.0.0 — the application was installed with
+pypdfium2 5.x, Pillow 13.0.0 — the application was installed with
 `pip install -e .`, mock Qwen and mock ServiceNow services were started by the
-test fixtures on random localhost ports. Date: 2026-11-01.
+test fixtures on random localhost ports. Date of the final v1.1.0 run: 2026-11-02.
 
 Command: `python -m pytest tests -v --durations=8`
 
-Result: **52 passed, 0 failed, 0 skipped in 103.8 s.**
+Result: **72 passed, 0 failed, 0 skipped in 156.9 s** (60 tests in 1.0.1 plus
+12 new tests for v1.1.0 — embedded image extraction, conservative filtering,
+meaningful attachment names, quality validation / review flow, section
+preview, decompression-bomb guard; several 1.0 tests were updated for the v3
+description format).
 
 ```
 tests/test_e2e.py::test_full_flow_60_slides PASSED
@@ -26,6 +30,18 @@ tests/test_e2e.py::test_upload_rejections_via_api PASSED
 tests/test_e2e.py::test_delete_job_removes_files PASSED
 tests/test_e2e.py::test_ui_served PASSED
 tests/test_e2e.py::test_cli PASSED
+tests/test_embedded.py::test_extraction_covers_all_cases PASSED
+tests/test_embedded.py::test_decorative_filtering_is_conservative PASSED
+tests/test_embedded.py::test_embedded_mode_end_to_end PASSED
+tests/test_embedded.py::test_embedded_publish_partial_failure_recovery PASSED
+tests/test_embedded.py::test_full_slide_mode_still_available PASSED
+tests/test_embedded.py::test_presentation_saved_by_older_version_gets_images_on_publish PASSED
+tests/test_embedded.py::test_mode_setting_is_persistent_and_ascii_filenames PASSED
+tests/test_embedded.py::test_visual_description_is_rejected_and_retried PASSED
+tests/test_embedded.py::test_persistently_bad_answers_need_review PASSED
+tests/test_embedded.py::test_validation_rules PASSED
+tests/test_embedded.py::test_rtl_and_structure_in_html PASSED
+tests/test_embedded.py::test_oversized_embedded_picture_is_reported_not_decoded PASSED
 tests/test_security.py::test_valid_pptx_accepted PASSED
 tests/test_security.py::test_rejects_wrong_extension PASSED
 tests/test_security.py::test_rejects_non_zip_content PASSED
@@ -64,9 +80,31 @@ tests/test_units.py::test_conversion_isolated PASSED
 tests/test_units.py::test_conversion_page_limit PASSED
 tests/test_units.py::test_conversion_timeout_kills_process PASSED
 tests/test_units.py::test_text_extraction PASSED
-7.06s call     tests/test_e2e.py::test_wrong_api_key_marks_slides_failed
-======================== 52 passed in 103.81s (0:01:43) ========================
+tests/test_units.py::test_secretstore_roundtrip_non_windows PASSED
+tests/test_units.py::test_persisted_ui_secrets_survive_restart PASSED
+tests/test_units.py::test_shutdown_endpoint_only_in_desktop_mode PASSED
+tests/test_units.py::test_desktop_launcher_start_stop PASSED
+tests/test_units.py::test_desktop_defaults_do_not_override_env_file PASSED
+tests/test_units.py::test_parse_description_salvages_truncated_repetition_loop PASSED
+tests/test_units.py::test_parse_description_collapses_blank_runs_in_valid_json PASSED
+tests/test_units.py::test_degenerate_answer_triggers_penalised_retry PASSED
+======================== 72 passed in 156.88s (0:02:36) ========================
 ```
+
+### v1.1.0 acceptance mapping (requirements "Embedded Image Extraction and Context-Aware Technical Knowledge Generation")
+
+| Requirement | Test(s) | Evidence |
+|---|---|---|
+| Extract PNG/JPEG, screenshots, multiple images per slide, picture groups, reused assets, cropped (visible portion only), rotated; flag what cannot be extracted; no full-slide fallback | `test_extraction_covers_all_cases` | 60-slide generated deck with a planned image layout: 81 pictures found; crop 0.25/0.25/0.10 of a 900×900 screenshot yields a pixel-exact 450×504 PNG; 90° rotation yields the rotated pixels; reuse counted across 12 slides; JPEG stored byte-identical; vector placeholders reported `supported=False` with a note |
+| Conservative decorative filtering with reasons; manual include/exclude; overrides preserved | `test_decorative_filtering_is_conservative`, `test_embedded_mode_end_to_end` | 20 of 81 auto-selected: repeated logo (12 slides) and a 1200×6 separator excluded, screenshots, grouped icons and the cropped picture kept, every decision carries reasons; `PATCH …/images/{idx}` toggles survive re-extraction (`replace_slide_images` keeps `selected != auto_selected`) |
+| Meaningful file names, Hebrew preserved, unique, original format, reliable mapping to sys_ids | `test_embedded_mode_end_to_end`, `test_mode_setting_is_persistent_and_ascii_filenames` | `004_משואה_750_01.png`, `004_משואה_750_02.png`, `003_ארכיטקטורה_-_Client_API_Database_01.png`, `007_Error_handling_-_שגיאת_חיבור_01.jpg`; `attachment_sys_id` per image matches the attachment record; ASCII mode: `004_750_01.png`, `007_Error_handling_01.jpg` |
+| Qwen prompt explains meaning, uses reliable PPTX text and neighbour context, each slide independent | `test_embedded_mode_end_to_end` (prompt capture), `test_prompt_treats_slide_as_data` | every request carries `<slide_text>` with the PPTX text and *previous/next slide title* context; 60 independent sections |
+| Professional HTML: one heading per section, no raw JSON, no blank-line runs, lists, alt text, RTL | `test_rtl_and_structure_in_html`, `test_article_html_structure`, `test_text_to_html_escapes_and_lists` | `<section>` per slide, single `<h2>`, `<ol>`/`<ul>` with item direction, `<figure><img alt>`; no `<script` |
+| Strict validation: visual-only, raw OCR, truncated, loops, empty, duplicates → retry with correction, then needs_review; never silently accepted; never auto-published | `test_visual_description_is_rejected_and_retried`, `test_persistently_bad_answers_need_review`, `test_validation_rules`, `test_plain_text_answer_and_json_mode_fallback`, `test_parse_description_salvages_truncated_repetition_loop` | visual-first mock: 120 requests for 60 slides, 60 corrective prompts seen, all slides end `done`; visual-always mock: 60 slides `needs_review`, publish → HTTP 409, edit + `POST …/accept` → `done` |
+| UI: image mode setting (persistent), full slide preview + extracted images, include/exclude, text editing, section preview | `test_mode_setting_is_persistent_and_ascii_filenames`, `test_embedded_mode_end_to_end` (`preview.html?slide=4`), Playwright run (below) | `PUT /api/config image_attachment_mode` survives restart and applies to new jobs; the UI run exercised thumbnails, toggles, review/accept, section preview and publish without console errors |
+| ServiceNow: draft, selected images with meaningful names under the correct slide, no duplicates on retry, recovery preserved, previously created articles not modified automatically, HTML sanitised | `test_embedded_mode_end_to_end`, `test_embedded_publish_partial_failure_recovery`, `test_duplicate_detection_after_local_state_loss`, `test_presentation_saved_by_older_version_gets_images_on_publish` | 20 attachments, each referenced in its slide's section in order; failure after 7 attachments → retry completes to 20 with no duplicate names; re-publish → still 1 article / 20 attachments; a 1.0 job gets images extracted lazily on publish |
+| Full-slide mode still available | `test_full_slide_mode_still_available` | `image_mode=full_slide` → 60 `slide_NNN.png` attachments |
+| Decompression-bomb guard on embedded pictures | `test_oversized_embedded_picture_is_reported_not_decoded` | a 9000×9000 PNG is refused from its header, flagged, the next picture is still extracted |
 
 ## Acceptance scenario mapping (section 10 of the requirements)
 
@@ -99,14 +137,79 @@ tests/test_units.py::test_text_extraction PASSED
 * **Web UI**: Playwright (Chromium) run against the real server + mocks:
   jobs list, upload page, job page (EN and HE/RTL), settings page; publishing
   through the UI produced the article number and links on screen.
+  **v1.1.0 run** (12-slide embedded deck, one slide forced to *needs review*):
+  publish button disabled and the review counter shown; thumbnails of the
+  extracted images with reasons; unticking/ticking *Include* on slide 4
+  changed `selected` on the server; *Preview section* rendered slide 4 alone
+  with its two figures; filtering *Only needing review*, editing the text and
+  *Accept for publishing* moved the job to `ready`; Hebrew UI publish produced
+  `KB0001001` with 10 attachments named e.g. `004_משואה_750_01.png`; the
+  *Images and quality* settings form persisted the mode. No browser console
+  errors.
 * **Dependency audit**: `pip-audit` clean after upgrading Pillow 12.3.0 → 13.0.0
   and opentelemetry-api 1.45.0 → 1.45.2; CycloneDX SBOM generated.
+
+## B. Deployment package tests (final packages)
+
+### B.1 `ppt2kb-web-offline.tar` — image build and container start (executed)
+
+* Built with `buildah bud --isolation chroot` from `deploy/docker/Dockerfile`
+  (no Docker daemon in the build sandbox; buildah performs a real OCI build:
+  base image pulled, apt/pip steps executed). First build **failed** at the
+  user-creation step (`groupadd` not on the restricted PATH) — fixed, rebuilt.
+* Exported with `buildah push ... docker-archive:` → 617 MB tar, tags
+  `ppt2kb:1.0.0`; `skopeo inspect` OK (5 layers, labels, amd64/linux).
+* Container start test (`buildah run --isolation chroot --user 10001:10001`,
+  volume mounted at `/data`, entrypoint `ppt2kb`): health `ok`,
+  LibreOffice 7.4.7 present, 68 Hebrew font faces; uploaded the 60-slide deck
+  through the API from inside the container → `ready 60/60`; published to the
+  mock ServiceNow → `KB0001001`, 1 article, 60 attachments; slide image served
+  as PNG. Repeated after the final rebuild with identical results
+  (`container-test.log`).
+* Not executed: `docker load` / `docker compose up` themselves (no daemon).
+  The tar is in the standard docker-archive format (manifest.json +
+  repositories + layers) that `docker load` and `podman load` consume.
+
+### B.2 `PPT2KB-Setup.exe` — build and installation test (executed under Wine 9.0)
+
+The installer was built by `deploy/windows/build-windows.sh` (components
+checksum-verified; LibreOffice MSI GPG signature verified). Because the build
+environment is Linux, the installation test used Wine 9.0 (WoW64 prefix) with
+a virtual display — a close but not identical substitute for Windows 11:
+
+| Step | Result (v1.1.0 installer, 2026-11-02) |
+|---|---|
+| `PPT2KB-Setup.exe /S /D=C:\PPT2KB` on a fresh prefix | 28 s; 4,747 files; 8 shortcuts; Add/Remove Programs entry `PPT2KB 1.1.0` |
+| Bundled mock services started with the embedded Python (`tools\start-mock-services.cmd` equivalent) | up after 4 s |
+| `PPT2KB.exe` (desktop launcher) | returns in 0.15 s, server healthy after 5 s (`version 1.1.0`, `libreoffice: true`) |
+| Second `PPT2KB.exe` while running | detects the running instance (no second server) |
+| Upload the 60-slide *embedded-images* test deck | `ready 60/60` after 17 s; image mode `embedded`; **81 embedded pictures extracted, 20 auto-selected, 0 slides needing review** (with the deterministic mock); slide 4: cropped 450×504 PNG, 160×160 PNG rotated 90°, 120×120 repeated logo auto-excluded |
+| Manual include/exclude (`PATCH …/images/1`) and section preview (`preview.html?slide=4`) | toggles persisted; preview shows `<h2 dir="rtl">4. משואה 750</h2>` with 2 figures |
+| UI secret (`PUT /api/config`) | stored as `dpapi:` blob (DPAPI), not in clear text |
+| Create draft | `published KB0001001`, 20 attachments on the mock with names such as `002_תהליך_התחברות_01.png`, `003_ארכיטקטורה_-_Client_API_Database_01.png`, `004_משואה_750_01.png`; re-publish → still 1 article / 20 attachments |
+| Data folder | 60 slide renders + 81 extracted image files under `%LOCALAPPDATA%\PPT2KB\data` |
+| `PPT2KB.exe --stop` | 1.8 s, server gone |
+| `uninstall.exe /S` | finished in 7 s: shortcuts and registry key removed, data folder kept (by design); `config` kept; `python` folder remained only because the test's mock processes were still running from it |
+
+The 1.0.1 run of the same script (60-slide VPN deck, full-slide mode, 60
+attachments) is kept in the build log for comparison.
+
+Earlier iterations of this test found and fixed: launcher `swprintf` wide-string
+bug (server never started, blocking dialog); desktop defaults overriding the
+env file (`PPT2KB_PORT` ignored); `/D=` ignored by MultiUser; 64-bit default
+folder; `BUILD-INFO.txt` left behind by the uninstaller.
+
+Also verified under Wine: the trimmed LibreOffice converts the 60-slide deck
+to a 60-page PDF with correct Hebrew rendering (bundled fonts); the embedded
+Python imports every compiled dependency (`pydantic_core`, `lxml`, `Pillow`,
+`pdfium`).
 
 ## Not verified in this environment (must be done in your pipeline)
 
 | Item | Why | How to verify |
 |---|---|---|
-| Docker image build and run | no Docker daemon available in the review sandbox (client only) | `scripts/build-image.sh && docker run --rm ppt2kb:1.0.0 soffice --version`, then run the e2e test against the container (`PPT2KB_*` env + mocks) or simply process a deck through the UI |
+| `docker load` / Compose on a real Docker host | no daemon in the sandbox (image was built and run with buildah) | `docs/DEPLOY_DOCKER_OFFLINE.md` §1 and §6 |
+| Windows installer on a clean Windows 11 x64 (physical/VM, network disabled) | only Wine was available | install `PPT2KB-Setup.exe`, then `powershell -ExecutionPolicy Bypass -File "<install>\tools\validate-offline.ps1"` → expect `RESULT: PASS`; double-click PPT2KB and check the browser opens |
 | Real Qwen endpoint | not reachable from the sandbox | **Settings → Test connection**; process a 2-slide deck; check `description` JSON fields are populated. If your gateway rejects `response_format`, the automatic fallback kicks in (logged once) |
 | Real ServiceNow Zurich instance | not reachable | **Test connection** (GET `kb_knowledge_base`), then publish a small deck into a test KB; check the article, its 2 attachments and that images render in the article view and in the portal; confirm `article_type` choice value (see `docs/SERVICENOW.md`) |
 | Behaviour with LibreOffice versions other than 24.2 | only 24.2.7 was available | run `tests/test_units.py::test_conversion_isolated` on the target host |

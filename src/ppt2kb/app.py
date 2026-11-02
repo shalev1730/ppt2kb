@@ -83,7 +83,7 @@ class AppState:
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or get_settings()
-    configure_logging(settings.log_level, settings.log_json)
+    configure_logging(settings.log_level, settings.log_json, log_file=settings.log_file)
     register_secret(settings.ui_password.get_secret_value())
     problems = settings.validate_files()
     if problems:

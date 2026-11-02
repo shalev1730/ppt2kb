@@ -45,7 +45,14 @@ class Settings(BaseSettings):
     # contact. Empty = only the hosts of the configured Qwen / ServiceNow URLs.
     allowed_outbound_hosts: str = ""
     # Secrets typed into the UI are kept in memory only, unless this is true.
+    # When true they are stored in the database - on Windows encrypted with DPAPI
+    # (current user), elsewhere protected only by file permissions.
     persist_ui_secrets: bool = False
+    # Desktop edition (Windows installer): enables the local /api/shutdown endpoint
+    # used by the "Stop PPT2KB" shortcut; only honoured for loopback clients.
+    desktop_mode: bool = False
+    # Optional log file (rotating, 5 x 5 MB) in addition to stdout.
+    log_file: Optional[Path] = None
 
     # --------------------------------------------------------------- uploads
     max_upload_mb: int = 200
@@ -79,6 +86,16 @@ class Settings(BaseSettings):
     qwen_temperature: float = 0.1
     qwen_prompt_file: Optional[Path] = None
     qwen_extra_body_json: str = ""  # JSON object merged into the request body
+    # Extra attempts (with corrective hints) when an answer fails quality validation
+    qwen_quality_retries: int = 1
+
+    # ------------------------------------------------------------ attachments
+    # embedded  = attach only the images embedded in the slides (default)
+    # full_slide = attach the rendered slide screenshots (1.0 behaviour)
+    image_attachment_mode: str = "embedded"
+    # Use ASCII-only attachment file names (Hebrew titles replaced) if the
+    # ServiceNow instance rejects Unicode file names.
+    ascii_filenames: bool = False
 
     # ------------------------------------------------------------ servicenow
     servicenow_url: str = ""  # e.g. https://servicenow.internal.example
@@ -104,7 +121,7 @@ class Settings(BaseSettings):
     # ---------------------------------------------------------------- limits
     max_concurrent_jobs: int = 1
 
-    @field_validator("ca_bundle", "client_cert", "client_key", "qwen_prompt_file", mode="before")
+    @field_validator("ca_bundle", "client_cert", "client_key", "qwen_prompt_file", "log_file", mode="before")
     @classmethod
     def _empty_path_is_none(cls, v):
         if v is None or (isinstance(v, str) and not v.strip()):
@@ -131,6 +148,14 @@ class Settings(BaseSettings):
         if v not in ("png", "jpeg", "jpg"):
             raise ValueError("image_format must be png or jpeg")
         return "jpeg" if v == "jpg" else v
+
+    @field_validator("image_attachment_mode")
+    @classmethod
+    def _mode(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("embedded", "full_slide"):
+            raise ValueError("image_attachment_mode must be embedded or full_slide")
+        return v
 
     @field_validator("servicenow_auth_type")
     @classmethod

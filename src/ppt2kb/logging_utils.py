@@ -73,16 +73,21 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, ensure_ascii=False)
 
 
-def configure_logging(level: str = "INFO", json_logs: bool = False, quiet: Iterable[str] = ()) -> None:
+def configure_logging(level: str = "INFO", json_logs: bool = False, quiet: Iterable[str] = (), log_file=None) -> None:
     root = logging.getLogger()
     root.handlers.clear()
-    handler = logging.StreamHandler(sys.stdout)
-    if json_logs:
-        handler.setFormatter(JsonFormatter())
-    else:
-        handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-    handler.addFilter(RedactingFilter())
-    root.addHandler(handler)
+    formatter = JsonFormatter() if json_logs else logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    if log_file:
+        from logging.handlers import RotatingFileHandler
+        from pathlib import Path
+
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        handlers.append(RotatingFileHandler(str(log_file), maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"))
+    for handler in handlers:
+        handler.setFormatter(formatter)
+        handler.addFilter(RedactingFilter())
+        root.addHandler(handler)
     root.setLevel(level.upper())
     # third party libraries that may log request details
     for name in ("httpx", "httpcore", "uvicorn.access", *quiet):

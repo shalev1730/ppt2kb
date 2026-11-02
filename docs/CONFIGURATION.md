@@ -106,16 +106,71 @@ Minimum TLS version is 1.2. Proxy environment variables are ignored by design;
 if traffic must pass through an internal forward proxy, terminate it at the
 network layer (transparent proxy) or allow direct access to the two hosts.
 
+## Embedded images and attachment names (v1.1)
+
+| Variable | Default | Notes |
+|---|---|---|
+| `PPT2KB_IMAGE_ATTACHMENT_MODE` | `embedded` | `embedded`: only the pictures embedded in the PPTX (PNG/JPEG, screenshots, photos, picture groups, cropped/rotated pictures) are attached to the article, each under the section of its slide. The full slide render is still produced and sent to Qwen for analysis but is **never** attached in this mode. `full_slide`: one rendered image per slide is attached (behaviour of 1.0). The value is the default for new uploads; each presentation can override it in the UI, and the publish request can override it again (`image_mode`). Settable in the UI (persisted). |
+| `PPT2KB_ASCII_FILENAMES` | `false` | `true` drops Hebrew (and any non-ASCII) characters from attachment file names (`004_750_01.png` instead of `004_משואה_750_01.png`) for instances or proxies that reject Unicode file names. |
+| `PPT2KB_QWEN_QUALITY_RETRIES` | `1` | How many times an answer that fails the quality validation (visual-only description, copied slide text, truncated/looping JSON, empty, duplicate of the previous slide) is re-requested with a corrective hint before the slide is marked **needs review**. 0 disables the retry (the validation still runs). |
+
+Extraction uses `python-pptx` on the original file (no model involved) and is
+limited to `PPT2KB_MAX_SLIDES`. Vector pictures (EMF/WMF/SVG), OLE objects,
+shapes, SmartArt and text boxes are **not** extracted: they are listed as
+*unsupported* in the UI so the reviewer can decide; nothing is faked. Legacy
+`.ppt` files have no embedded-image extraction (the file is not a ZIP
+container); for them use `full_slide` mode.
+
+Decorative filtering is deliberately conservative: an image is excluded
+automatically only when strong signals agree (the same picture repeated on 3+
+slides — logos, watermarks; extreme aspect ratio — lines, separators; near-
+uniform colour — backgrounds; background fills; sub-1 % placements). Small
+icons that are not repeated are kept. Every decision is shown with its reasons
+in the UI and can be overridden per image; overrides survive re-extraction.
+
+## Model quality and small models
+
+The quality of the generated text is largely the model's. Small vision models
+(2B–8B parameters, e.g. a local Qwen2-VL via Ollama) read Hebrew poorly,
+describe the look of the slide instead of its meaning and sometimes fall into
+repetition loops. Qwen2.5-VL-32B/72B or Qwen3-VL give markedly better results.
+The application mitigates what it can:
+
+* **Prompt (v1.1)**: the model is instructed to act as a technical writer and
+  explain *what the slide teaches* — purpose, components, relationships,
+  procedures, exact technical identifiers — never colours, layout or fonts; to
+  prefer the reliable text extracted from the PPTX over its own OCR; to answer
+  in the slide's language (Hebrew stays Hebrew); and to invent nothing. The
+  neighbouring slide titles are passed as context only; each slide is written
+  as an independent section.
+* **Validation**: every answer is checked (`src/ppt2kb/llm/validate.py`).
+  Blocking problems — not JSON, truncated, repetition loop, empty, appearance-
+  only, copied slide text, duplicate of the previous slide — trigger a retry
+  with a corrective hint (`PPT2KB_QWEN_QUALITY_RETRIES`); if the problem
+  persists the slide is marked **needs review** and the article cannot be
+  created until a reviewer edits and accepts it (or re-runs the slide).
+  Warnings (low confidence, unreadable parts, short answer for a dense slide)
+  are shown to the reviewer but do not block.
+* Truncated JSON is salvaged and flagged, repetition loops trigger a retry with
+  `frequency_penalty`, the heading is taken from the PPTX when the slide has an
+  editable title.
+
+If your endpoint supports them, setting
+`PPT2KB_QWEN_EXTRA_BODY_JSON={"frequency_penalty":0.3,"repetition_penalty":1.1}`
+reduces loops for small models. Keep `PPT2KB_QWEN_TEMPERATURE` low (0.1).
+
 ## Prompt customisation
 
 The default system prompt (`src/ppt2kb/prompt.py`) asks for a JSON object with
-`title`, `visible_text`, `technical_description`, `visuals_explanation`,
-`procedures`, `uncertainties`, `language`; demands verbatim transcription in
-the original language (Hebrew stays Hebrew), forbids inventing information and
-declares the slide content as data, not instructions. You can replace it via
-`PPT2KB_QWEN_PROMPT_FILE` or in the UI — keep the JSON contract if you want the
-structured fields; free-text prompts still work (text lands in
-`technical_description`).
+`title`, `slide_kind`, `summary`, `details`, `procedures`, `key_facts`,
+`visible_text`, `uncertainties`, `language`, `confidence`; it demands
+explanation of meaning rather than appearance, exact technical identifiers,
+the slide's language, and declares the slide content as data, not
+instructions. You can replace it via `PPT2KB_QWEN_PROMPT_FILE` or in the UI —
+keep the JSON contract if you want the structured fields and the quality
+validation to work as designed; free-text answers are accepted but are flagged
+*needs review* (`not_json`). Answers in the 1.0 format
+(`technical_description` / `visuals_explanation`) are still understood.
 
 ## UI language
 

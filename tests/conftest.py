@@ -70,9 +70,9 @@ def qwen_ctl(mock_qwen):
     def stats():
         return httpx.get(mock_qwen.base + "/_mock/stats", timeout=5).json()
 
-    set_(fail_slides=[], flaky_every=0, delay_ms=0, api_key="test-key", plain_text=False, reject_json_mode=False, reset_stats=True)
+    set_(fail_slides=[], flaky_every=0, delay_ms=0, api_key="test-key", plain_text=False, reject_json_mode=False, degenerate_first=False, visual_first=False, visual_always=False, reset_stats=True)
     yield type("Ctl", (), {"set": staticmethod(set_), "stats": staticmethod(stats), "base": mock_qwen.base})
-    set_(fail_slides=[], flaky_every=0, delay_ms=0, api_key="test-key", plain_text=False, reject_json_mode=False)
+    set_(fail_slides=[], flaky_every=0, delay_ms=0, api_key="test-key", plain_text=False, reject_json_mode=False, degenerate_first=False, visual_first=False, visual_always=False)
 
 
 @pytest.fixture

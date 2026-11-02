@@ -43,16 +43,37 @@ automatically.
   otherwise the file name. Editable in the UI (also after a first publish).
 * **Body** (`text` field, HTML article type): a hidden marker
   `<!-- ppt2kb:job=<uuid> -->`, a source line, a collapsible table of contents,
-  then one `<section>` per slide in original order with `<h2>N. title</h2>`,
-  the slide image and the reviewed text (paragraphs, numbered steps as `<ol>`).
-  Hebrew paragraphs get `dir="rtl"`. Only `div/section/details/summary/h2/p/ol/li/img/a/em`
+  then one `<section>` per slide in original order — **never merged** — with a
+  single `<h2>N. title</h2>` (the editable PPTX slide title when present), the
+  reviewed explanation (summary and details paragraphs, procedures as `<ol>`,
+  key facts as `<ul>`, labels as `<p><strong>`), then the slide's images as
+  `<figure><img alt="…"></figure>`. Hebrew content gets `dir="rtl"`, lists take
+  the direction of their items. No raw JSON, no repeated headings, no runs of
+  blank lines. Only `div/section/details/summary/h2/p/strong/ol/ul/li/figure/img/a/em`
   are emitted; all text is HTML-escaped, so nothing from a slide or from the
   model can inject markup or scripts into the article.
-* **Images**: attached to the article record via the Attachment API and
-  referenced as `<img src="/sys_attachment.do?sys_id=<attachment sys_id>">`,
-  the same form the knowledge editor uses for uploaded images. They are visible
-  to anyone who can read the article (attachment access follows the record).
-  The images also appear in the *Attachments* list of the article.
+* **Images** — two modes (`image_mode` per presentation, default from
+  `PPT2KB_IMAGE_ATTACHMENT_MODE`):
+  * `embedded` (default): only the pictures embedded in the PPTX that are
+    selected (automatically, then confirmed or changed by the reviewer) are
+    attached, in their original format (PNG stays PNG, JPEG stays JPEG;
+    cropped/rotated pictures are stored as the visible portion, as PNG). File
+    names are meaningful and unique:
+    `<slide 3 digits>_<sanitised slide title>_<image 2 digits>.<png|jpg>`, e.g.
+    `001_תהליך_התחברות_01.png`, `007_Error_handling_-_שגיאת_חיבור_01.jpg`. Hebrew
+    is preserved (NFC); spaces become `_`; characters other than letters,
+    digits, `-` and `_` are replaced; the title part is capped at 48
+    characters; collisions get `-2`, `-3`. `PPT2KB_ASCII_FILENAMES=true` strips
+    non-ASCII for instances that reject Unicode names. The full-slide render is
+    *not* attached in this mode (it is only used for analysis). A slide with no
+    selected image gets a text-only section — never a full-slide fallback
+    unless the reviewer switches the presentation to `full_slide`.
+  * `full_slide`: one rendered image per slide, `slide_001.png`… (1.0 behaviour).
+  Attachments go to the article record via the Attachment API and are
+  referenced as `<img src="/sys_attachment.do?sys_id=<attachment sys_id>">`
+  inside the section of the slide they came from, in slide order. The mapping
+  slide → image → file name → attachment `sys_id` is stored locally and shown
+  in the UI.
 * **State**: always `draft`. Publishing stays with your knowledge workflow
   (review/approve/publish); once published the article is indexed by AI Search
   like any other HTML article — the generated text is plain, searchable HTML.
@@ -62,16 +83,27 @@ automatically.
 Each job stores the created `sys_id`/`number` locally. On re-publish:
 
 1. If a `sys_id` is known and still exists → it is updated (title, body) and
-   missing images are uploaded; existing attachments (matched by `sys_id`
-   recorded per slide, or by file name) are reused.
+   missing images are uploaded; existing attachments (matched by the
+   `sys_id` recorded per image, or by file name on the article) are reused.
+   Attachment names are assigned once and stored, so a retry never produces
+   `004_משואה_750_01-2.png` duplicates.
 2. If the local record was lost, the hidden marker is searched remotely
    (`textLIKEppt2kb:job=<uuid>`); a match is reused.
 3. Otherwise a new article is created. `force_new=true` on the API skips 1–2.
 
-Partial failures (network drop after 20 of 60 attachments, 5xx from the
+The application only ever updates articles that carry its own marker for the
+same job; it never modifies other Knowledge articles. Changing the image mode
+or the image selection and publishing again rewrites the body of the same
+draft; attachments that are no longer referenced are left on the record (they
+are listed in the article's *Attachments* and can be removed by the editor) —
+the tool does not delete anything on the instance.
+
+Partial failures (network drop after 7 of 20 attachments, 5xx from the
 instance, wrong credentials) leave the job in `publish_failed` with the error
-shown in the UI; **Retry publishing** continues from where it stopped. The
-automated tests cover both (`test_publish_partial_failure_recovery`,
+shown in the UI; **Create draft article** again continues from where it
+stopped. The automated tests cover both modes
+(`test_embedded_publish_partial_failure_recovery`,
+`test_publish_partial_failure_recovery`,
 `test_duplicate_detection_after_local_state_loss`).
 
 ## Instance-specific configuration you may want

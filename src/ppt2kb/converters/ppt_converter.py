@@ -53,7 +53,12 @@ def _limits_preexec(memory_mb: int, cpu_seconds: int):
     return _apply
 
 
-def _minimal_env(profile_dir: Path) -> dict:
+IS_WINDOWS = sys.platform == "win32"
+
+
+def _minimal_env(profile_dir: Path, soffice: Path) -> dict:
+    if IS_WINDOWS:
+        return _minimal_env_windows(profile_dir, soffice)
     env = {
         "PATH": "/usr/local/bin:/usr/bin:/bin",
         "HOME": str(profile_dir),
@@ -75,6 +80,92 @@ def _minimal_env(profile_dir: Path) -> dict:
     if "FONTCONFIG_PATH" in os.environ:
         env["FONTCONFIG_PATH"] = os.environ["FONTCONFIG_PATH"]
     return env
+
+
+def _minimal_env_windows(profile_dir: Path, soffice: Path) -> dict:
+    """Minimal environment for soffice.exe: system paths it needs, nothing inherited."""
+    sysroot = os.environ.get("SystemRoot", r"C:\Windows")
+    tmp = str(profile_dir / "tmp")
+    env = {
+        "SystemRoot": sysroot,
+        "windir": sysroot,
+        "SystemDrive": os.environ.get("SystemDrive", "C:"),
+        "ComSpec": os.environ.get("ComSpec", sysroot + r"\System32\cmd.exe"),
+        "PATH": f"{soffice.parent};{sysroot}\\System32;{sysroot}",
+        "PATHEXT": ".EXE;.COM",
+        "TEMP": tmp,
+        "TMP": tmp,
+        "USERPROFILE": str(profile_dir),
+        "APPDATA": str(profile_dir / "appdata"),
+        "LOCALAPPDATA": str(profile_dir / "localappdata"),
+        "HOMEDRIVE": os.environ.get("SystemDrive", "C:"),
+        "HOMEPATH": "\\",
+        "NO_PROXY": "*",
+        "no_proxy": "*",
+        "HTTP_PROXY": "",
+        "HTTPS_PROXY": "",
+        "SAL_DISABLE_OPENCL": "1",
+    }
+    for key in ("NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE", "OS"):
+        if key in os.environ:
+            env[key] = os.environ[key]
+    (profile_dir / "appdata").mkdir(exist_ok=True)
+    (profile_dir / "localappdata").mkdir(exist_ok=True)
+    return env
+
+
+class _WindowsJob:
+    """Windows Job Object: memory limit + kill-on-close for the LibreOffice process tree."""
+
+    def __init__(self, memory_mb: int):
+        import ctypes
+        from ctypes import wintypes
+
+        self.k32 = ctypes.windll.kernel32
+        self.handle = self.k32.CreateJobObjectW(None, None)
+        if not self.handle:
+            raise OSError("CreateJobObject failed")
+
+        class IO_COUNTERS(ctypes.Structure):
+            _fields_ = [(n, ctypes.c_ulonglong) for n in ("ReadOperationCount", "WriteOperationCount", "OtherOperationCount", "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
+            _fields_ = [("PerProcessUserTimeLimit", ctypes.c_longlong), ("PerJobUserTimeLimit", ctypes.c_longlong), ("LimitFlags", wintypes.DWORD),
+                        ("MinimumWorkingSetSize", ctypes.c_size_t), ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                        ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD), ("SchedulingClass", wintypes.DWORD)]
+
+        class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
+            _fields_ = [("BasicLimitInformation", JOBOBJECT_BASIC_LIMIT_INFORMATION), ("IoInfo", IO_COUNTERS), ("ProcessMemoryLimit", ctypes.c_size_t),
+                        ("JobMemoryLimit", ctypes.c_size_t), ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+        JOB_OBJECT_LIMIT_JOB_MEMORY = 0x200
+        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
+        JOB_OBJECT_LIMIT_ACTIVE_PROCESS = 0x8
+        info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
+        info.BasicLimitInformation.ActiveProcessLimit = 32
+        if memory_mb > 0:
+            info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_MEMORY
+            info.JobMemoryLimit = memory_mb * 1024 * 1024
+        JobObjectExtendedLimitInformation = 9
+        if not self.k32.SetInformationJobObject(self.handle, JobObjectExtendedLimitInformation, ctypes.byref(info), ctypes.sizeof(info)):
+            raise OSError("SetInformationJobObject failed")
+
+    def assign(self, pid: int) -> None:
+        PROCESS_SET_QUOTA, PROCESS_TERMINATE = 0x0100, 0x0001
+        h = self.k32.OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, False, pid)
+        if not h:
+            raise OSError("OpenProcess failed")
+        try:
+            if not self.k32.AssignProcessToJobObject(self.handle, h):
+                raise OSError("AssignProcessToJobObject failed")
+        finally:
+            self.k32.CloseHandle(h)
+
+    def close(self) -> None:
+        if self.handle:
+            self.k32.CloseHandle(self.handle)  # KILL_ON_JOB_CLOSE terminates any leftovers
+            self.handle = None
 
 
 def _write_profile(profile_dir: Path) -> None:
@@ -116,6 +207,12 @@ def find_libreoffice(configured: Path | None) -> Path:
         found = shutil.which(name)
         if found:
             candidates.append(Path(found))
+    if IS_WINDOWS:
+        # bundled copy next to the embedded interpreter (PPT2KB-Setup.exe layout), then system installs
+        base = Path(sys.executable).resolve().parent.parent
+        candidates += [base / "libreoffice" / "program" / "soffice.exe"]
+        for pf in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")):
+            candidates.append(Path(pf) / "LibreOffice" / "program" / "soffice.exe")
     candidates += [Path("/usr/bin/soffice"), Path("/usr/bin/libreoffice"), Path("/opt/libreoffice/program/soffice")]
     for c in candidates:
         if c and c.exists():
@@ -154,7 +251,7 @@ def convert_pptx_to_pdf(
 
     cmd = [
         str(soffice),
-        f"-env:UserInstallation=file://{profile_dir}",
+        f"-env:UserInstallation={profile_dir.resolve().as_uri()}",
         "--headless",
         "--invisible",
         "--nologo",
@@ -169,18 +266,13 @@ def convert_pptx_to_pdf(
         str(safe_input),
     ]
     logger.info("Starting LibreOffice conversion (timeout %ss, mem %sMB)", timeout_s, memory_mb)
-    preexec = _limits_preexec(memory_mb, cpu_seconds) if sys.platform != "win32" else None
+    popen = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, cwd=str(work), env=_minimal_env(profile_dir, soffice), close_fds=True)
+    job = None
     try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.DEVNULL,
-            cwd=str(work),
-            env=_minimal_env(profile_dir),
-            preexec_fn=preexec,
-            close_fds=True,
-        )
+        if IS_WINDOWS:
+            proc, job = _launch_windows(cmd, popen, memory_mb)
+        else:
+            proc = subprocess.Popen(cmd, preexec_fn=_limits_preexec(memory_mb, cpu_seconds), **popen)
         try:
             out, err = proc.communicate(timeout=timeout_s)
         except subprocess.TimeoutExpired:
@@ -197,17 +289,77 @@ def convert_pptx_to_pdf(
         shutil.move(str(pdf_path), final)
         return final
     finally:
+        if job is not None:
+            job.close()
         shutil.rmtree(work, ignore_errors=True)
 
 
-def _kill_group(proc: subprocess.Popen) -> None:
+CREATE_SUSPENDED = 0x00000004
+
+
+def _launch_windows(cmd: list, popen: dict, memory_mb: int):  # pragma: no cover - windows only
+    """Start soffice.exe inside a Job Object (memory limit, kill-on-close).
+
+    The process is created suspended, assigned to the job, then resumed, so
+    that its children (soffice.bin) inherit the job. If anything in that
+    sequence fails the process is killed and started again without a job
+    (conversion still works, only without the memory limit).
+    """
+    flags = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
     try:
-        os.killpg(proc.pid, signal.SIGKILL)
-    except Exception:
+        job = _WindowsJob(memory_mb)
+        proc = subprocess.Popen(cmd, creationflags=flags | CREATE_SUSPENDED, **popen)
+        try:
+            job.assign(proc.pid)
+            _resume_suspended(proc.pid)
+            return proc, job
+        except Exception as e:
+            logger.warning("Job Object setup failed (%s); restarting LibreOffice without memory limit", e)
+            try:
+                proc.kill()
+                proc.wait(timeout=10)
+            except Exception:
+                pass
+            job.close()
+    except Exception as e:
+        logger.warning("Could not create a Job Object (%s); LibreOffice runs without memory limit", e)
+    return subprocess.Popen(cmd, creationflags=flags, **popen), None
+
+
+def _resume_suspended(pid: int) -> None:  # pragma: no cover - windows only
+    """Resume a process started with CREATE_SUSPENDED (after it was placed in the Job Object)."""
+    import ctypes
+
+    k32 = ctypes.windll.kernel32
+    ntdll = ctypes.windll.ntdll
+    PROCESS_SUSPEND_RESUME = 0x0800
+    h = k32.OpenProcess(PROCESS_SUSPEND_RESUME, False, pid)
+    if not h:
+        raise OSError("OpenProcess(resume) failed")
+    try:
+        ntdll.NtResumeProcess(h)
+    finally:
+        k32.CloseHandle(h)
+
+
+def _kill_group(proc: subprocess.Popen) -> None:
+    if IS_WINDOWS:
+        try:
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW)
+        except Exception:
+            pass
         try:
             proc.kill()
         except Exception:
             pass
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
     try:
         proc.wait(timeout=10)
     except Exception:

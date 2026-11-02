@@ -19,6 +19,11 @@ ARG PYTHON_IMAGE=python:3.12-slim-bookworm
 FROM ${PYTHON_IMAGE} AS builder
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ARG PIP_TRUSTED_HOST=
+# Build-time only (never persisted in the image): an egress proxy and the CA
+# file that validates it. Mount the CA file with `-v <file>:/build-ca.crt:ro`
+# (buildah) and pass BUILD_CA_FILE=/build-ca.crt.
+ARG BUILD_PROXY=
+ARG BUILD_CA_FILE=
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_INDEX_URL=${PIP_INDEX_URL}
 WORKDIR /build
 COPY requirements.txt pyproject.toml README.md ./
@@ -30,16 +35,19 @@ RUN python -m venv /opt/ppt2kb \
  && if ls wheelhouse/*.whl >/dev/null 2>&1; then \
       /opt/ppt2kb/bin/pip install --no-index --find-links=wheelhouse -r requirements.txt . ; \
     else \
-      /opt/ppt2kb/bin/pip install ${PIP_TRUSTED_HOST:+--trusted-host $PIP_TRUSTED_HOST} -r requirements.txt . ; \
+      env ${BUILD_PROXY:+https_proxy=$BUILD_PROXY HTTPS_PROXY=$BUILD_PROXY} ${BUILD_CA_FILE:+PIP_CERT=$BUILD_CA_FILE} \
+        /opt/ppt2kb/bin/pip install ${PIP_TRUSTED_HOST:+--trusted-host $PIP_TRUSTED_HOST} -r requirements.txt . ; \
     fi \
  && /opt/ppt2kb/bin/pip uninstall -y pip setuptools wheel >/dev/null 2>&1 || true
 
 # ----------------------------------------------------------------- runtime
 FROM ${PYTHON_IMAGE}
 ARG APT_MIRROR=
+ARG BUILD_PROXY=
+ARG BUILD_CA_FILE=
 LABEL org.opencontainers.image.title="ppt2kb" \
       org.opencontainers.image.description="Secure on-premise PowerPoint to ServiceNow Knowledge converter" \
-      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.version="1.1.0" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.source="internal"
 
@@ -56,6 +64,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN set -eux; \
     if [ -n "$APT_MIRROR" ]; then sed -i "s#http://deb.debian.org/debian#${APT_MIRROR}#g" /etc/apt/sources.list.d/debian.sources; fi; \
+    if [ -n "$BUILD_PROXY" ]; then printf 'Acquire::http::Proxy "%s";\nAcquire::https::Proxy "%s";\n' "$BUILD_PROXY" "$BUILD_PROXY" > /etc/apt/apt.conf.d/99build-proxy; fi; \
+    if [ -n "$BUILD_CA_FILE" ]; then printf 'Acquire::https::CAInfo "%s";\n' "$BUILD_CA_FILE" > /etc/apt/apt.conf.d/99build-ca; fi; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         libreoffice-impress libreoffice-draw libreoffice-core libreoffice-common \
@@ -65,9 +75,11 @@ RUN set -eux; \
     fc-cache -f; \
     apt-get purge -y --auto-remove; \
     apt-get clean; \
+    rm -f /etc/apt/apt.conf.d/99build-proxy /etc/apt/apt.conf.d/99build-ca; \
+    if [ -n "$APT_MIRROR" ]; then sed -i "s#${APT_MIRROR}#http://deb.debian.org/debian#g" /etc/apt/sources.list.d/debian.sources; fi; \
     rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man; \
-    groupadd -r -g 10001 ppt2kb; \
-    useradd -r -u 10001 -g ppt2kb -d /home/ppt2kb -s /usr/sbin/nologin ppt2kb; \
+    /usr/sbin/groupadd -r -g 10001 ppt2kb; \
+    /usr/sbin/useradd -r -u 10001 -g ppt2kb -d /home/ppt2kb -s /usr/sbin/nologin ppt2kb; \
     mkdir -p /data /home/ppt2kb /app; \
     chown -R ppt2kb:ppt2kb /data /home/ppt2kb /app
 

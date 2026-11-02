@@ -44,11 +44,14 @@ def test_full_flow_60_slides(client, deck60, qwen_ctl, sn_ctl):
 
     # descriptions carry the right slide number and language, Hebrew preserved
     s1, s2 = full["slides"][0], full["slides"][1]
-    assert "Slide 1 of 60" in s1["description"]["technical_description"]
-    assert "Slide 2 of 60" in s2["description"]["technical_description"]
+    assert "Slide 1 of 60" in s1["description"]["summary"]
+    assert "Slide 2 of 60" in s2["description"]["summary"]
     assert s2["description"]["language"] == "he+en" and "שלב 2" in s2["description"]["visible_text"]
     assert s1["original_text"].startswith("Step 1") and "Speaker notes for slide 1" == s1["notes_text"]
     assert s1["status"] == "done" and s1["attempts"] == 1
+
+    # this deck has no embedded pictures: use the full-slide attachment mode (1.0 behaviour)
+    assert client.patch(f"/api/jobs/{job['id']}", json={"image_mode": "full_slide"}).json()["image_mode"] == "full_slide"
 
     # 5) review & edit
     r = client.patch(f"/api/jobs/{job['id']}/slides/3", json={"edited_content": "Reviewed text for slide 3 <b>bold</b>", "title": "Slide three"})
@@ -147,11 +150,19 @@ def test_transient_errors_are_retried(client, deck60, qwen_ctl):
 
 
 def test_plain_text_answer_and_json_mode_fallback(client, deck60, qwen_ctl):
+    """Non-JSON answers are kept for the reviewer but never accepted silently: the slide needs review."""
     qwen_ctl.set(plain_text=True, reject_json_mode=True)
     job = wait_for(client, upload(client, deck60)["id"])
-    assert job["status"] == "ready"
+    assert job["status"] == "partial" and job["counts"]["needs_review"] == 60 and job["counts"]["done"] == 0
     s = client.get(f"/api/jobs/{job['id']}").json()["slides"][0]
-    assert "(mock) Slide 1 of 60" in s["content"] and "structured JSON" in s["description"]["uncertainties"]
+    assert "(mock) Slide 1 of 60" in s["content"] and "not_json" in s["quality"]
+    # publishing is refused until the slides are accepted
+    assert client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90"}).status_code == 409
+    # the reviewer edits and accepts a slide -> done
+    client.patch(f"/api/jobs/{job['id']}/slides/1", json={"edited_content": "Reviewed explanation."})
+    assert client.post(f"/api/jobs/{job['id']}/slides/1/accept").status_code == 200
+    j = client.get(f"/api/jobs/{job['id']}?slides=false").json()
+    assert j["counts"]["done"] == 1 and j["counts"]["needs_review"] == 59
 
 
 def test_wrong_api_key_marks_slides_failed(client, deck60, qwen_ctl):
@@ -209,6 +220,7 @@ def test_interrupted_processing_is_resumed(app_settings, deck60, qwen_ctl):
 def test_publish_partial_failure_recovery(client, deck60, qwen_ctl, sn_ctl):
     job = _done_job(client, deck60)
     kb = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+    client.patch(f"/api/jobs/{job['id']}", json={"image_mode": "full_slide"})
     sn_ctl.set(fail_attachment_after=20)
     client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": kb})
     job = wait_for(client, job["id"], statuses=("published", "publish_failed"))

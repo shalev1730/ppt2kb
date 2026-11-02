@@ -30,6 +30,11 @@ Generated from `requirements.txt` on the verified build environment. See `sbom/p
 | uvicorn | 0.54.0 | BSD-3-Clause | ASGI server | https://uvicorn.dev/ |
 | xlsxwriter | 3.2.9 | BSD License | python-pptx dependency (chart data), unused at runtime | https://github.com/jmcnamara/XlsxWriter |
 
+## Package-specific SBOMs
+
+* `ppt2kb-docker-image-sbom.cdx.json` — the Python packages above plus the 256 Debian packages of the image (`docker-image-debian-packages.tsv`).
+* `ppt2kb-windows-sbom.cdx.json` — the Python packages plus the embedded CPython 3.13.17, LibreOffice 25.8.7 (Windows), the VC++ runtime DLLs, the launcher and NSIS; `PPT2KB-Setup-payload.sha256` lists every installed file with its SHA-256.
+
 ## System packages (container image / standalone host)
 
 | Package | License | Purpose |

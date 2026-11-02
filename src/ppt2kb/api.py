@@ -60,6 +60,33 @@ async def health(request: Request):
     return {"status": "ok" if lo else "degraded", "version": __version__, "libreoffice": bool(lo), "uptime_s": int(__import__("time").time() - ctx.started_at)}
 
 
+@router.post("/shutdown")
+async def shutdown(request: Request):
+    """Desktop edition only: stop the local server (used by the "Stop PPT2KB" shortcut)."""
+    ctx = _ctx(request)
+    client_host = request.client.host if request.client else ""
+    if not ctx.settings.desktop_mode or client_host not in ("127.0.0.1", "::1"):
+        raise HTTPException(404, "not found")
+    for j in ctx.db.list_jobs(50):
+        if ctx.runner.is_active(j["id"]):
+            ctx.runner.cancel(j["id"])
+    import os
+    import threading
+    import time
+
+    hook = getattr(ctx, "shutdown_hook", None)
+
+    def _exit():
+        time.sleep(0.3)
+        if hook:
+            hook()  # graceful: tells the uvicorn server to exit
+        else:
+            os._exit(0)
+
+    threading.Thread(target=_exit, daemon=True).start()
+    return {"ok": True, "detail": "shutting down"}
+
+
 # ----------------------------------------------------------------- config
 class ConfigUpdate(BaseModel):
     values: dict = Field(default_factory=dict)
@@ -149,12 +176,23 @@ def _job_view(ctx, job: dict, include_slides: bool = True) -> dict:
         "kb_sys_id": job["kb_sys_id"],
         "servicenow": job["servicenow"],
         "counts": counts,
+        "image_mode": (job.get("options") or {}).get("image_mode", "embedded"),
+        "source_kind": job.get("source_kind"),
         "active": ctx.runner.is_active(job["id"]) or job["id"] in ctx.publish_threads and ctx.publish_threads[job["id"]].is_alive(),
     }
+    all_images = ctx.db.get_slide_images(job["id"])
+    out["images_total"] = len(all_images)
+    out["images_selected"] = sum(1 for im in all_images if im["selected"])
     if include_slides:
+        images_by_slide: dict = {}
+        for im in all_images:
+            images_by_slide.setdefault(im["slide_number"], []).append(_image_view(job["id"], im))
         out["slides"] = [
             {
                 "number": s.number,
+                "images": images_by_slide.get(s.number, []),
+                "quality": s.quality,
+                "reviewed": s.reviewed,
                 "title": s.title,
                 "original_text": s.original_text,
                 "notes_text": s.notes_text,
@@ -171,6 +209,34 @@ def _job_view(ctx, job: dict, include_slides: bool = True) -> dict:
             for s in ctx.db.get_slides(job["id"])
         ]
     return out
+
+
+def _image_view(job_id: str, im: dict) -> dict:
+    return {
+        "idx": im["idx"],
+        "slide_number": im["slide_number"],
+        "url": f"/api/jobs/{job_id}/slides/{im['slide_number']}/images/{im['idx']}" if im["file_ref"] else None,
+        "file_ref": im["file_ref"],
+        "format": im["file_ext"],
+        "original_format": im["original_ext"],
+        "width": im["width"],
+        "height": im["height"],
+        "shape_name": im["shape_name"],
+        "source_kind": im["source_kind"],
+        "cropped": im["cropped"],
+        "rotation": im["rotation"],
+        "in_group": im["in_group"],
+        "reuse_count": im["reuse_count"],
+        "supported": im["supported"],
+        "selected": im["selected"],
+        "auto_selected": im["auto_selected"],
+        "score": im["score"],
+        "reasons": im["reasons"],
+        "flagged": im["flagged"],
+        "note": im["note"],
+        "file_name": im["file_name"],
+        "attachment_sys_id": im["attachment_sys_id"],
+    }
 
 
 @router.get("/jobs")
@@ -229,6 +295,7 @@ async def create_job(request: Request, file: UploadFile = File(...), title: str 
         source_kind=result.kind,
         source_size=result.size_bytes,
         macro_enabled=result.macro_enabled,
+        options={"image_mode": str(ctx.runtime.get("image_attachment_mode") or "embedded")},
     )
     (s.jobs_dir / job_id).mkdir(parents=True, exist_ok=True)
     if autostart:
@@ -247,6 +314,7 @@ async def get_job(request: Request, job_id: str, slides: bool = True):
 class JobUpdate(BaseModel):
     title: Optional[str] = None
     kb_sys_id: Optional[str] = None
+    image_mode: Optional[str] = None
 
 
 @router.patch("/jobs/{job_id}")
@@ -260,6 +328,13 @@ async def update_job(request: Request, job_id: str, body: JobUpdate):
         if not re.match(r"^[0-9a-fA-F]{0,32}$", body.kb_sys_id):
             raise HTTPException(400, "invalid knowledge base id")
         fields["kb_sys_id"] = body.kb_sys_id
+    if body.image_mode is not None:
+        if body.image_mode not in ("embedded", "full_slide"):
+            raise HTTPException(400, "image_mode must be embedded or full_slide")
+        job = ctx.db.get_job(job_id)
+        opts = dict(job.get("options") or {})
+        opts["image_mode"] = body.image_mode
+        fields["options"] = opts
     ctx.db.update_job(job_id, **fields)
     return _job_view(ctx, ctx.db.get_job(job_id), include_slides=False)
 
@@ -362,6 +437,68 @@ async def slide_image(request: Request, job_id: str, number: int):
     return FileResponse(str(path), media_type=media, headers={"Cache-Control": "private, max-age=3600"})
 
 
+@router.get("/jobs/{job_id}/slides/{number}/images/{idx}")
+async def slide_embedded_image(request: Request, job_id: str, number: int, idx: int):
+    ctx = _ctx(request)
+    _job_or_404(ctx, job_id)
+    rows = [im for im in ctx.db.get_slide_images(job_id, number) if im["idx"] == idx]
+    if not rows or not rows[0]["file_ref"]:
+        raise HTTPException(404, "image not found")
+    base = (ctx.settings.jobs_dir / job_id).resolve()
+    path = (base / rows[0]["file_ref"]).resolve()
+    if base not in path.parents or not path.is_file():
+        raise HTTPException(404, "image not found")
+    media = "image/jpeg" if path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
+    return FileResponse(str(path), media_type=media, headers={"Cache-Control": "private, max-age=3600"})
+
+
+class ImageUpdate(BaseModel):
+    selected: bool
+
+
+@router.patch("/jobs/{job_id}/slides/{number}/images/{idx}")
+async def update_slide_image(request: Request, job_id: str, number: int, idx: int, body: ImageUpdate):
+    """Manually include/exclude an embedded image from the Knowledge article."""
+    ctx = _ctx(request)
+    _job_or_404(ctx, job_id)
+    rows = [im for im in ctx.db.get_slide_images(job_id, number) if im["idx"] == idx]
+    if not rows:
+        raise HTTPException(404, "image not found")
+    if body.selected and not rows[0]["supported"]:
+        raise HTTPException(400, "this image could not be extracted and cannot be attached")
+    ctx.db.update_slide_image(job_id, number, idx, selected=body.selected)
+    rows = [im for im in ctx.db.get_slide_images(job_id, number) if im["idx"] == idx]
+    return _image_view(job_id, rows[0])
+
+
+@router.post("/jobs/{job_id}/slides/{number}/accept")
+async def accept_slide(request: Request, job_id: str, number: int):
+    """Reviewer accepts a needs_review slide (after editing) so the article can be published."""
+    ctx = _ctx(request)
+    _job_or_404(ctx, job_id)
+    slide = ctx.db.get_slide(job_id, number)
+    if not slide:
+        raise HTTPException(404, "slide not found")
+    if slide.status not in (SlideStatus.needs_review, SlideStatus.done):
+        raise HTTPException(409, "slide is not in a reviewable state")
+    ctx.db.update_slide(job_id, number, status=SlideStatus.done, reviewed=True, error=None)
+    ctx.runner._finalize(job_id)
+    return {"ok": True, "number": number, "status": "done"}
+
+
+@router.post("/jobs/{job_id}/images/extract")
+async def extract_images(request: Request, job_id: str):
+    """(Re-)extract the embedded images of the PPTX - e.g. for presentations processed by an older version."""
+    ctx = _ctx(request)
+    job = _job_or_404(ctx, job_id)
+    if ctx.runner.is_active(job_id):
+        raise HTTPException(409, "job is processing")
+    if job["source_kind"] != "pptx":
+        raise HTTPException(400, "embedded image extraction is only available for .pptx files")
+    n = ctx.runner.extract_images(job_id)
+    return {"ok": True, "images": n}
+
+
 # ----------------------------------------------------------------- export
 @router.get("/jobs/{job_id}/export.json")
 async def export_json(request: Request, job_id: str):
@@ -380,25 +517,45 @@ async def export_json(request: Request, job_id: str):
 async def export_html(request: Request, job_id: str, embed: bool = True):
     ctx = _ctx(request)
     job = _job_or_404(ctx, job_id)
-    slides = ctx.db.get_slides(job_id)
-    html = build_standalone_html(title=job["title"] or job["display_name"], slides=slides, job_dir=ctx.settings.jobs_dir / job_id, embed_images=embed)
+    slides = _slides_with_images(ctx, job_id)
+    mode = (job.get("options") or {}).get("image_mode", "embedded")
+    html = build_standalone_html(title=job["title"] or job["display_name"], slides=slides, job_dir=ctx.settings.jobs_dir / job_id, embed_images=embed, mode=mode)
     name = re.sub(r"[^A-Za-z0-9_.-]+", "_", Path(job["display_name"]).stem) or "presentation"
     return Response(content=html, media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{name}.html"'})
 
 
 @router.get("/jobs/{job_id}/preview.html")
-async def preview_html(request: Request, job_id: str):
-    """Article body exactly as it will be sent to ServiceNow, with local image URLs."""
+async def preview_html(request: Request, job_id: str, slide: Optional[int] = None):
+    """Article body exactly as it will be sent to ServiceNow, with local image URLs.
+
+    ``?slide=N`` previews the section of one slide only (same renderer, same markup)."""
     ctx = _ctx(request)
     job = _job_or_404(ctx, job_id)
-    slides = ctx.db.get_slides(job_id)
+    slides = _slides_with_images(ctx, job_id)
+    if slide is not None:
+        slides = [s for s in slides if s.number == slide]
+        if not slides:
+            raise HTTPException(404, "slide not found")
+    mode = (job.get("options") or {}).get("image_mode", "embedded")
     body = build_article_html(
         title=job["title"] or job["display_name"],
         slides=slides,
-        image_src=lambda s: f"/api/jobs/{job_id}/slides/{s.number}/image",
+        image_src=(lambda s: f"/api/jobs/{job_id}/slides/{s.number}/image") if mode == "full_slide" else None,
+        figures_for=(lambda s: [(f"/api/jobs/{job_id}/slides/{s.number}/images/{im['idx']}", f"{s.title or 'slide ' + str(s.number)} - image {im['idx']}") for im in s.images if im.get("selected") and im.get("file_ref")]) if mode == "embedded" else None,
         deck_name=job["display_name"],
+        sections_only=slide is not None,
     )
     return Response(content=body, media_type="text/html; charset=utf-8")
+
+
+def _slides_with_images(ctx, job_id: str):
+    slides = ctx.db.get_slides(job_id)
+    by_slide: dict = {}
+    for im in ctx.db.get_slide_images(job_id):
+        by_slide.setdefault(im["slide_number"], []).append(im)
+    for s in slides:
+        s.images = by_slide.get(s.number, [])
+    return slides
 
 
 # ---------------------------------------------------------------- publish
@@ -406,6 +563,7 @@ class PublishRequest(BaseModel):
     kb_sys_id: str = ""
     attach_pptx: Optional[bool] = None
     force_new: bool = False
+    image_mode: Optional[str] = None  # embedded | full_slide (default: the job's mode)
 
 
 @router.post("/jobs/{job_id}/publish", status_code=202)
@@ -418,8 +576,16 @@ async def publish(request: Request, job_id: str, body: PublishRequest):
     if t and t.is_alive():
         raise HTTPException(409, "publishing already in progress")
     counts = ctx.db.slide_status_counts(job_id)
+    if counts.get("needs_review"):
+        raise HTTPException(409, f"{counts['needs_review']} slide(s) need review: edit and accept them (or re-run) before publishing")
     if counts["done"] != job["slide_count"] or job["slide_count"] == 0:
         raise HTTPException(409, "all slides must be processed before publishing")
+    mode = body.image_mode or (job.get("options") or {}).get("image_mode") or "embedded"
+    if mode not in ("embedded", "full_slide"):
+        raise HTTPException(400, "image_mode must be embedded or full_slide")
+    if mode == "embedded" and job["source_kind"] == "pptx" and not ctx.db.get_slide_images(job_id):
+        ctx.runner.extract_images(job_id)  # presentation processed by an older version
+    ascii_names = bool(ctx.runtime.get("ascii_filenames"))
     kb = body.kb_sys_id or job["kb_sys_id"] or str(ctx.runtime.get("servicenow_default_kb") or "")
     if not re.match(r"^[0-9a-fA-F]{32}$", kb):
         raise HTTPException(400, "a valid knowledge base must be selected")
@@ -441,7 +607,8 @@ async def publish(request: Request, job_id: str, body: PublishRequest):
 
     def run():
         try:
-            publish_job(ctx.db, client, job_id, kb_sys_id=kb, jobs_dir=ctx.settings.jobs_dir, attach_pptx=attach, force_new=body.force_new, progress=progress)
+            publish_job(ctx.db, client, job_id, kb_sys_id=kb, jobs_dir=ctx.settings.jobs_dir, attach_pptx=attach, force_new=body.force_new,
+                        image_mode=mode, ascii_filenames=ascii_names, progress=progress)
         except PublishError:
             pass
         except Exception as e:  # pragma: no cover

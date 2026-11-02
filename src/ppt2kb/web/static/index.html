@@ -99,7 +99,9 @@
         <div class="counts">
           <span class="pill ok"><span id="c-done">0</span> <span data-i18n="job.done">done</span></span>
           <span class="pill warn"><span id="c-pending">0</span> <span data-i18n="job.pending">pending</span></span>
+          <span class="pill review" id="c-review-pill" hidden><span id="c-review">0</span> <span data-i18n="job.needsReview">need review</span></span>
           <span class="pill err"><span id="c-failed">0</span> <span data-i18n="job.failed">failed</span></span>
+          <span class="pill" id="c-images" title="embedded images selected / extracted"></span>
         </div>
       </div>
       <progress id="job-progress" max="100" value="0"></progress>
@@ -112,10 +114,18 @@
           <select id="kb-select"><option value="" data-i18n="publish.loadKb">Load knowledge bases…</option></select>
         </label>
         <button class="btn" id="btn-load-kb" data-i18n="publish.refreshKb">Load from ServiceNow</button>
+        <label><span data-i18n="publish.imageMode">Image attachment mode</span>
+          <select id="job-image-mode">
+            <option value="embedded" data-i18n="imageMode.embedded">Embedded images only</option>
+            <option value="full_slide" data-i18n="imageMode.full_slide">Full slide renders</option>
+          </select>
+        </label>
         <label class="check"><input type="checkbox" id="attach-pptx"> <span data-i18n="publish.attachPptx">Attach original PPTX</span></label>
         <button class="btn btn-primary" id="btn-publish" data-i18n="publish.create">Create draft article</button>
       </div>
       <p class="muted" data-i18n="publish.note">The article is created in Draft state. Publication goes through the normal ServiceNow review workflow.</p>
+      <p class="muted" id="publish-images-note"></p>
+      <p class="err" id="publish-review-note" hidden data-i18n="publish.needReview">Some slides need review. Edit and accept them (or re-run them) before publishing.</p>
       <div id="publish-result" class="result" hidden></div>
     </div>
 
@@ -123,6 +133,7 @@
       <h2 data-i18n="slides.title">Slides</h2>
       <div class="row gap">
         <label class="check"><input type="checkbox" id="filter-failed"> <span data-i18n="slides.onlyFailed">Only failed</span></label>
+        <label class="check"><input type="checkbox" id="filter-review"> <span data-i18n="slides.onlyReview">Only needing review</span></label>
         <label class="check"><input type="checkbox" id="show-original"> <span data-i18n="slides.showOriginal">Show extracted text</span></label>
       </div>
     </div>
@@ -137,8 +148,19 @@
       <span class="slide-status pill"></span>
     </div>
     <div class="slide-body">
-      <figure class="slide-image"><img loading="lazy" alt=""></figure>
+      <div class="slide-visuals">
+        <figure class="slide-image"><img loading="lazy" alt=""><figcaption class="muted" data-i18n="slide.fullRender">Full slide render (sent to Qwen for analysis)</figcaption></figure>
+        <div class="slide-images">
+          <div class="row between wrap">
+            <strong data-i18n="slide.embedded">Embedded images (attached to the article)</strong>
+            <span class="muted slide-images-count"></span>
+          </div>
+          <p class="muted slide-images-empty" hidden data-i18n="slide.noEmbedded">No embedded images were found in this slide. Shapes, SmartArt and text boxes are not extracted.</p>
+          <div class="thumbs"></div>
+        </div>
+      </div>
       <div class="slide-text">
+        <div class="slide-quality" hidden></div>
         <label><span data-i18n="slide.heading">Heading</span><input type="text" class="slide-title" maxlength="300"></label>
         <label><span data-i18n="slide.description">Description (editable)</span>
           <textarea class="slide-content" rows="14" dir="auto"></textarea>
@@ -148,8 +170,10 @@
         <div class="slide-error err" hidden></div>
         <div class="row gap wrap">
           <button class="btn btn-small btn-save" data-i18n="slide.save">Save</button>
+          <button class="btn btn-small btn-primary btn-accept" data-i18n="slide.accept" hidden>Accept for publishing</button>
           <button class="btn btn-small btn-ghost btn-reset" data-i18n="slide.reset">Revert to AI text</button>
           <button class="btn btn-small btn-ghost btn-retry" data-i18n="slide.retry">Re-run this slide</button>
+          <button class="btn btn-small btn-ghost btn-section" data-i18n="slide.section">Preview section</button>
           <span class="muted slide-info"></span>
         </div>
       </div>
@@ -185,6 +209,24 @@
         <button class="btn btn-primary" type="submit" data-i18n="settings.save">Save</button>
         <button class="btn" type="button" id="test-qwen" data-i18n="settings.test">Test connection</button>
         <span class="muted" id="qwen-test-result"></span>
+      </div>
+    </form>
+
+    <form class="card" id="proc-form">
+      <h2 data-i18n="settings.proc">Images and quality</h2>
+      <label><span data-i18n="settings.imageMode">Image attachment mode (default for new presentations)</span>
+        <select name="image_attachment_mode">
+          <option value="embedded" data-i18n="imageMode.embedded">Embedded images only</option>
+          <option value="full_slide" data-i18n="imageMode.full_slide">Full slide renders</option>
+        </select>
+      </label>
+      <p class="muted" data-i18n="settings.imageModeHelp">Embedded: only pictures and screenshots extracted from the PPTX are attached, with meaningful file names (e.g. 004_משואה_750_01.png). The full slide render is always sent to Qwen for analysis but is never attached in this mode. Full slide: attaches one rendered image per slide (previous behaviour).</p>
+      <div class="grid2">
+        <label><span data-i18n="settings.qualityRetries">Quality retries per slide (answers that fail validation)</span><input name="qwen_quality_retries" type="number" min="0" max="5"></label>
+        <label class="check"><input type="checkbox" name="ascii_filenames"> <span data-i18n="settings.asciiNames">ASCII-only attachment file names (drop Hebrew from names)</span></label>
+      </div>
+      <div class="row gap">
+        <button class="btn btn-primary" type="submit" data-i18n="settings.save">Save</button>
       </div>
     </form>
 

@@ -177,7 +177,19 @@
     });
     $("#btn-preview", view).addEventListener("click", () => showPreview(jobId));
     $("#filter-failed", view).addEventListener("change", () => renderSlides(view, state.job));
+    $("#filter-review", view).addEventListener("change", () => renderSlides(view, state.job));
     $("#show-original", view).addEventListener("change", () => renderSlides(view, state.job));
+    const modeSel = $("#job-image-mode", view);
+    modeSel.addEventListener("change", async () => {
+      try {
+        await api("PATCH", "/api/jobs/" + jobId, { image_mode: modeSel.value });
+        toast(t("job.modeSaved"));
+        if (modeSel.value === "embedded" && state.job && state.job.images_total === 0 && state.job.slide_count) {
+          try { await api("POST", "/api/jobs/" + jobId + "/images/extract"); } catch (e) { /* reported on publish */ }
+        }
+        load();
+      } catch (e) { toast(t("common.error", { msg: e.message }), true); }
+    });
 
     const kbSelect = $("#kb-select", view);
     async function loadKbs() {
@@ -194,11 +206,13 @@
     $("#btn-load-kb", view).addEventListener("click", loadKbs);
     $("#btn-publish", view).addEventListener("click", async () => {
       if (!state.job) return;
+      if (state.job.counts.needs_review) { toast(t("publish.needReview"), true); return; }
       if (state.job.counts.done !== state.job.slide_count || !state.job.slide_count) { toast(t("publish.needAll"), true); return; }
       if (!kbSelect.value) { toast(t("publish.kb"), true); return; }
+      if (modeSel.value === "embedded" && state.job.images_selected === 0 && !confirm(t("publish.confirmNoImages"))) return;
       if (!confirm(t("publish.confirm"))) return;
       try {
-        await api("POST", "/api/jobs/" + jobId + "/publish", { kb_sys_id: kbSelect.value, attach_pptx: $("#attach-pptx", view).checked });
+        await api("POST", "/api/jobs/" + jobId + "/publish", { kb_sys_id: kbSelect.value, attach_pptx: $("#attach-pptx", view).checked, image_mode: modeSel.value });
         load();
       } catch (e) { toast(t("common.error", { msg: e.message }), true); }
     });
@@ -211,19 +225,32 @@
         $("#job-meta", view).textContent = job.display_name + " · " + fmtDate(job.created_at) + (job.model ? " · " + job.model : "") + (job.macro_enabled ? " · ⚠ macro-enabled file" : "");
         $("#job-status-label", view).textContent = t("status." + job.status);
         $("#job-error", view).textContent = job.error ? " — " + job.error : "";
+        const review = job.counts.needs_review || 0;
         $("#c-done", view).textContent = job.counts.done; $("#c-pending", view).textContent = job.counts.pending + job.counts.processing; $("#c-failed", view).textContent = job.counts.failed;
-        $("#job-progress", view).value = job.slide_count ? Math.round(job.counts.done / job.slide_count * 100) : (job.status === "converting" ? 5 : 0);
+        $("#c-review", view).textContent = review; $("#c-review-pill", view).hidden = !review;
+        const imgPill = $("#c-images", view);
+        imgPill.hidden = !job.slide_count || job.source_kind === "ppt";
+        imgPill.textContent = t("job.imagesCount", { sel: job.images_selected || 0, total: job.images_total || 0 });
+        $("#job-progress", view).value = job.slide_count ? Math.round((job.counts.done + review) / job.slide_count * 100) : (job.status === "converting" ? 5 : 0);
         const running = ["converting", "describing", "publishing", "uploaded"].includes(job.status) || job.active;
-        $("#btn-resume", view).hidden = !(["interrupted", "failed", "partial", "uploaded"].includes(job.status) && !job.active);
+        const resumable = job.counts.pending + job.counts.processing + job.counts.failed > 0 || ["uploaded", "interrupted"].includes(job.status);
+        $("#btn-resume", view).hidden = !(["interrupted", "failed", "partial", "uploaded"].includes(job.status) && !job.active && resumable);
         $("#btn-retry-failed", view).hidden = !(job.counts.failed > 0 && !job.active);
         $("#btn-cancel", view).hidden = !(job.active && ["converting", "describing"].includes(job.status));
-        $("#btn-publish", view).disabled = running || job.counts.done !== job.slide_count || !job.slide_count;
+        $("#btn-publish", view).disabled = running || review > 0 || job.counts.done !== job.slide_count || !job.slide_count;
+        $("#publish-review-note", view).hidden = !review;
+        if (document.activeElement !== modeSel) modeSel.value = job.image_mode || "embedded";
+        const imgNote = $("#publish-images-note", view);
+        imgNote.textContent = (job.image_mode || "embedded") === "embedded"
+          ? t("publish.imagesEmbedded", { sel: job.images_selected || 0, total: job.images_total || 0 })
+          : t("publish.imagesFull", { n: job.slide_count || 0 });
         if (!state.kbLoaded && job.kb_sys_id && !kbSelect.value) { kbSelect.innerHTML = ""; kbSelect.appendChild(el("option", { value: job.kb_sys_id, text: job.kb_sys_id })); }
         renderPublishResult(view, job);
         renderSlides(view, job);
         if (running) pollTimer = setTimeout(load, job.status === "publishing" ? 1500 : 2500);
       } catch (e) { toast(t("common.error", { msg: e.message }), true); }
     }
+    currentReload = () => { stopPolling(); load(); };
     load();
   }
 
@@ -257,7 +284,7 @@
   function renderSlides(view, job) {
     if (!job) return;
     const container = $("#slides", view);
-    const onlyFailed = $("#filter-failed", view).checked, showOriginal = $("#show-original", view).checked;
+    const onlyFailed = $("#filter-failed", view).checked, onlyReview = $("#filter-review", view).checked, showOriginal = $("#show-original", view).checked;
     const seen = new Set();
     job.slides.forEach(s => {
       seen.add(s.number);
@@ -266,24 +293,48 @@
         node = useTemplate("tpl-slide").firstElementChild;
         applyLang(node);
         slideNodes.set(s.number, node);
-        wireSlide(node, job.id, s.number);
+        wireSlide(node, job.id, s.number, () => currentReload());
         container.appendChild(node);
       }
-      node.hidden = onlyFailed && s.status !== "failed";
-      updateSlide(node, s, showOriginal);
+      node.hidden = (onlyFailed && s.status !== "failed") || (onlyReview && s.status !== "needs_review");
+      updateSlide(node, s, showOriginal, job);
     });
   }
+  // re-load hook used by slide actions (set by renderJob)
+  let currentReload = function () {};
 
-  function wireSlide(node, jobId, number) {
+  function wireSlide(node, jobId, number, reload) {
     const ta = $(".slide-content", node), titleIn = $(".slide-title", node);
     const markDirty = () => node.classList.add("dirty");
     ta.addEventListener("input", markDirty); titleIn.addEventListener("input", markDirty);
+    async function save() {
+      const r = await api("PATCH", "/api/jobs/" + jobId + "/slides/" + number, { edited_content: ta.value, title: titleIn.value });
+      node.classList.remove("dirty"); node.dataset.edited = r.edited_content !== null ? "1" : "";
+      return r;
+    }
     $(".btn-save", node).addEventListener("click", async () => {
+      try { await save(); toast(t("slide.saved")); } catch (e) { toast(t("common.error", { msg: e.message }), true); }
+    });
+    $(".btn-accept", node).addEventListener("click", async () => {
+      if (!confirm(t("slide.confirmAccept"))) return;
       try {
-        const r = await api("PATCH", "/api/jobs/" + jobId + "/slides/" + number, { edited_content: ta.value, title: titleIn.value });
-        node.classList.remove("dirty"); node.dataset.edited = r.edited_content !== null ? "1" : "";
-        toast(t("slide.saved"));
+        if (node.classList.contains("dirty")) await save();
+        await api("POST", "/api/jobs/" + jobId + "/slides/" + number + "/accept");
+        toast(t("slide.accepted")); reload();
       } catch (e) { toast(t("common.error", { msg: e.message }), true); }
+    });
+    $(".btn-section", node).addEventListener("click", () => showPreview(jobId, number));
+    $(".thumbs", node).addEventListener("change", async e => {
+      const cb = e.target;
+      if (!cb.classList.contains("thumb-select")) return;
+      cb.disabled = true;
+      try {
+        const r = await api("PATCH", "/api/jobs/" + jobId + "/slides/" + number + "/images/" + cb.dataset.idx, { selected: cb.checked });
+        cb.closest(".thumb").classList.toggle("excluded", !r.selected);
+        toast(r.selected ? t("slide.imageIncluded") : t("slide.imageExcluded"));
+        reload();
+      } catch (err) { cb.checked = !cb.checked; toast(t("common.error", { msg: err.message }), true); }
+      cb.disabled = false;
     });
     $(".btn-reset", node).addEventListener("click", async () => {
       try {
@@ -296,14 +347,29 @@
     });
   }
 
-  function updateSlide(node, s, showOriginal) {
+  function updateSlide(node, s, showOriginal, job) {
     node.classList.toggle("failed", s.status === "failed");
+    node.classList.toggle("review", s.status === "needs_review");
     $(".slide-no", node).textContent = "#" + s.number;
     const st = $(".slide-status", node);
-    st.textContent = s.status + (s.edited_content !== null && s.edited_content !== undefined ? " · " + t("slide.edited") : "");
-    st.className = "slide-status pill " + ({ done: "ok", failed: "err", processing: "info", pending: "warn" }[s.status] || "");
+    st.textContent = t("slideStatus." + s.status) + (s.edited_content !== null && s.edited_content !== undefined ? " · " + t("slide.edited") : "") + (s.reviewed ? " · " + t("slide.reviewed") : "");
+    st.className = "slide-status pill " + ({ done: "ok", failed: "err", processing: "info", pending: "warn", needs_review: "review" }[s.status] || "");
     const img = $(".slide-image img", node);
     if (img.getAttribute("src") !== s.image_url) { img.src = s.image_url; img.alt = "Slide " + s.number; }
+    $(".btn-accept", node).hidden = s.status !== "needs_review";
+    // quality issues from validation (reviewer information)
+    const q = $(".slide-quality", node), issues = s.quality || [];
+    q.hidden = !issues.length;
+    q.innerHTML = "";
+    if (issues.length) {
+      q.appendChild(el("strong", { text: s.status === "needs_review" ? t("slide.qualityBlocked") : t("slide.qualityWarn") }));
+      const ul = el("ul");
+      issues.forEach(code => ul.appendChild(el("li", { text: t("issue." + code) })));
+      q.appendChild(ul);
+      const unc = s.description && s.description.uncertainties;
+      if (unc) q.appendChild(el("div", { class: "muted", text: t("slide.uncertainties") + " " + unc }));
+    }
+    renderThumbs(node, s, job);
     if (!node.classList.contains("dirty")) {
       $(".slide-title", node).value = s.title || "";
       const ta = $(".slide-content", node);
@@ -321,21 +387,67 @@
     $(".btn-retry", node).disabled = s.status === "processing";
   }
 
-  async function showPreview(jobId) {
+  function renderThumbs(node, s, job) {
+    const box = $(".slide-images", node), thumbs = $(".thumbs", node);
+    const images = s.images || [];
+    const embeddedMode = !job || (job.image_mode || "embedded") === "embedded";
+    box.hidden = !embeddedMode || (job && job.source_kind === "ppt");
+    if (box.hidden) return;
+    const selected = images.filter(i => i.selected).length;
+    $(".slide-images-count", node).textContent = images.length ? t("slide.imagesCount", { sel: selected, total: images.length }) : "";
+    $(".slide-images-empty", node).hidden = images.length > 0;
+    const key = JSON.stringify(images.map(i => [i.idx, i.selected, i.file_name, i.attachment_sys_id]));
+    if (thumbs.dataset.key === key) return;  // unchanged - keep the DOM (and any checkbox the user is clicking)
+    thumbs.dataset.key = key;
+    thumbs.innerHTML = "";
+    images.forEach(im => {
+      const card = el("div", { class: "thumb" + (im.selected ? "" : " excluded") + (im.flagged ? " flagged" : "") });
+      if (im.url) card.appendChild(el("img", { src: im.url, loading: "lazy", alt: (im.shape_name || "image") + " " + im.idx }));
+      else card.appendChild(el("div", { class: "thumb-missing", text: t("slide.imageUnsupported", { fmt: im.original_format || "?" }) }));
+      const cb = el("input", { type: "checkbox", class: "thumb-select", "data-idx": im.idx });
+      cb.checked = !!im.selected;
+      if (!im.supported || !im.url) cb.disabled = true;
+      const label = el("label", { class: "check" }, [cb, el("span", { text: t("slide.includeImage") })]);
+      card.appendChild(label);
+      const meta = [];
+      meta.push((im.original_format || "").toUpperCase() + (im.width && im.height ? " " + im.width + "×" + im.height : ""));
+      if (im.cropped) meta.push(t("img.cropped"));
+      if (im.rotation) meta.push(t("img.rotated", { deg: im.rotation }));
+      if (im.in_group) meta.push(t("img.group"));
+      if (im.reuse_count > 1) meta.push(t("img.reused", { n: im.reuse_count }));
+      if (im.source_kind === "background") meta.push(t("img.background"));
+      card.appendChild(el("div", { class: "muted thumb-meta", text: meta.join(" · ") }));
+      if (im.file_name) card.appendChild(el("div", { class: "thumb-name", dir: "ltr", text: im.file_name + (im.attachment_sys_id ? " ✔" : "") }));
+      const reasons = (im.reasons || []).map(r => {
+        const m = /^([a-z_]+):\s*(.*)$/.exec(r);  // "code: English text" from the classifier
+        if (!m) return r;
+        const key = "reason." + m[1];
+        const tr = t(key);
+        return tr === key ? m[2] : tr;
+      });
+      if (reasons.length) card.appendChild(el("div", { class: "muted thumb-reasons", text: (im.auto_selected ? t("img.autoIncluded") : t("img.autoExcluded")) + ": " + reasons.join(", ") }));
+      if (im.flagged) card.appendChild(el("div", { class: "err thumb-flag", text: t("img.flagged") }));
+      if (im.note) card.appendChild(el("div", { class: "muted", text: im.note }));
+      thumbs.appendChild(card);
+    });
+  }
+
+  async function showPreview(jobId, slideNumber) {
     let dlg = document.getElementById("preview-dialog");
     if (!dlg) {
       dlg = el("dialog", { id: "preview-dialog" });
-      const head = el("header", {}, [el("strong", { text: t("job.preview") }), el("button", { class: "btn btn-small", text: "✕" })]);
+      const head = el("header", {}, [el("strong", { class: "dlg-title" }), el("button", { class: "btn btn-small", text: "✕" })]);
       head.lastChild.addEventListener("click", () => dlg.close());
       dlg.appendChild(head);
       dlg.appendChild(el("div", { class: "dialog-body" }));
       document.body.appendChild(dlg);
     }
+    $(".dlg-title", dlg).textContent = slideNumber ? t("slide.sectionPreview", { n: slideNumber }) : t("job.preview");
     const body = $(".dialog-body", dlg);
     body.textContent = t("common.loading");
     dlg.showModal();
     try {
-      const r = await fetch("/api/jobs/" + jobId + "/preview.html");
+      const r = await fetch("/api/jobs/" + jobId + "/preview.html" + (slideNumber ? "?slide=" + slideNumber : ""));
       const html = await r.text();
       // The preview is server-generated from escaped text only (no scripts); render it as-is.
       body.innerHTML = html;
@@ -358,7 +470,7 @@
         s.textContent = st && st.set ? t("settings.secretSet", { source: st.source }) : t("settings.secretUnset");
       });
     }
-    const forms = [$("#qwen-form", view), $("#sn-form", view)];
+    const forms = [$("#qwen-form", view), $("#proc-form", view), $("#sn-form", view)];
     forms.forEach(fill);
     forms.forEach(form => form.addEventListener("submit", async e => {
       e.preventDefault();
