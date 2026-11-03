@@ -23,7 +23,7 @@ Note: the Python version on the server decides which offline bundle you need
 ```bash
 git clone <internal repo>/ppt2kb && cd ppt2kb
 scripts/build-offline-bundle.sh --python 3.12 --arch x86_64 --out dist
-#  -> dist/ppt2kb-1.1.0-offline-py3.12-x86_64.tar.gz  (+ SHA256SUMS)
+#  -> dist/ppt2kb-1.1.1-offline-py3.12-x86_64.tar.gz  (+ SHA256SUMS)
 ```
 
 Use `--python 3.11` for Debian 12 servers, `--python 3.12` for Ubuntu 24.04 /
@@ -36,8 +36,8 @@ tarball and `SHA256SUMS` to the target server.
 
 ```bash
 sha256sum -c SHA256SUMS                                  # verify the transfer
-tar xzf ppt2kb-1.1.0-offline-py3.12-x86_64.tar.gz
-cd ppt2kb-1.1.0-offline-py3.12-x86_64
+tar xzf ppt2kb-1.1.1-offline-py3.12-x86_64.tar.gz
+cd ppt2kb-1.1.1-offline-py3.12-x86_64
 sudo deploy/standalone/install.sh                        # options: --prefix --data-dir --conf-dir --user --python --no-systemd
 ```
 
@@ -90,7 +90,7 @@ and point `PPT2KB_QWEN_BASE_URL=http://127.0.0.1:9001/v1`,
 
 ```bash
 sudo systemctl stop ppt2kb
-tar xzf ppt2kb-1.1.0-offline-py3.12-x86_64.tar.gz && cd ppt2kb-1.1.0-offline-py3.12-x86_64
+tar xzf ppt2kb-1.1.1-offline-py3.12-x86_64.tar.gz && cd ppt2kb-1.1.1-offline-py3.12-x86_64
 sudo deploy/standalone/install.sh        # reinstalls the venv from the new wheelhouse, keeps /etc/ppt2kb/ppt2kb.env and data
 sudo systemctl start ppt2kb
 ```

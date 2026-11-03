@@ -3,17 +3,16 @@
 ## What was executed
 
 Environment: Ubuntu 24.04 (x86_64), Python 3.13.18, LibreOffice 24.2.7.2,
-pypdfium2 5.x, Pillow 13.0.0 — the application was installed with
-`pip install -e .`, mock Qwen and mock ServiceNow services were started by the
-test fixtures on random localhost ports. Date of the final v1.1.0 run: 2026-11-02.
+pypdfium2 5.x, Pillow 13.0.0, Playwright + Chromium (UI tests) — the application
+was installed with `pip install -e .`, mock Qwen and mock ServiceNow services
+were started by the test fixtures on random localhost ports. Date of the final
+v1.1.1 run: 2026-11-03.
 
 Command: `python -m pytest tests -v --durations=8`
 
-Result: **72 passed, 0 failed, 0 skipped in 156.9 s** (60 tests in 1.0.1 plus
-12 new tests for v1.1.0 — embedded image extraction, conservative filtering,
-meaningful attachment names, quality validation / review flow, section
-preview, decompression-bomb guard; several 1.0 tests were updated for the v3
-description format).
+Result: **78 passed, 0 failed, 0 skipped in 187.5 s** (72 tests in 1.1.0 plus 6 new
+tests for v1.1.1; `tests/test_ui.py` needs Playwright and is skipped where it is
+not installed).
 
 ```
 tests/test_e2e.py::test_full_flow_60_slides PASSED
@@ -42,6 +41,10 @@ tests/test_embedded.py::test_persistently_bad_answers_need_review PASSED
 tests/test_embedded.py::test_validation_rules PASSED
 tests/test_embedded.py::test_rtl_and_structure_in_html PASSED
 tests/test_embedded.py::test_oversized_embedded_picture_is_reported_not_decoded PASSED
+tests/test_embedded.py::test_embedded_full_mode_is_default_and_attaches_both PASSED
+tests/test_embedded.py::test_embedded_full_partial_failure_recovery PASSED
+tests/test_embedded.py::test_mode_change_after_publish_requires_explicit_republish PASSED
+tests/test_embedded.py::test_backward_compatibility_with_older_presentations PASSED
 tests/test_security.py::test_valid_pptx_accepted PASSED
 tests/test_security.py::test_rejects_wrong_extension PASSED
 tests/test_security.py::test_rejects_non_zip_content PASSED
@@ -66,6 +69,8 @@ tests/test_security.py::test_security_headers PASSED
 tests/test_security.py::test_image_path_traversal_blocked PASSED
 tests/test_security.py::test_config_rejects_non_allowlisted_hosts PASSED
 tests/test_security.py::test_secrets_never_returned PASSED
+tests/test_ui.py::test_dark_mode_toggle_and_persistence PASSED
+tests/test_ui.py::test_rtl_and_ltr_layouts_keep_the_toggle_top_right PASSED
 tests/test_units.py::test_parse_description_json PASSED
 tests/test_units.py::test_parse_description_fenced PASSED
 tests/test_units.py::test_parse_description_prose_fallback PASSED
@@ -88,8 +93,28 @@ tests/test_units.py::test_desktop_defaults_do_not_override_env_file PASSED
 tests/test_units.py::test_parse_description_salvages_truncated_repetition_loop PASSED
 tests/test_units.py::test_parse_description_collapses_blank_runs_in_valid_json PASSED
 tests/test_units.py::test_degenerate_answer_triggers_penalised_retry PASSED
-======================== 72 passed in 156.88s (0:02:36) ========================
+======================== 78 passed in 187.47s (0:03:07) ========================
 ```
+
+### v1.1.1 regression mapping (three image output modes, Dark Mode)
+
+| # | Requirement | Test(s) | Evidence |
+|---|---|---|---|
+| 1 | Embedded Images Only | `test_embedded_mode_end_to_end` | body: 20 selected figures under their slides, no slide renders; attachments: all 80 originals → 21 distinct files (logo ×59 once, reused screenshot once); names `004_משואה_750_image_01.png`, `007_Error_handling_-_שגיאת_חיבור_image_01.jpg` |
+| 2 | Embedded Images + Full Slides (default) | `test_embedded_full_mode_is_default_and_attaches_both` | default without a choice; body: exactly one figure per section = its own render, above the explanation; attachments 60 renders (`004_משואה_750.png`) + 21 originals = 81; render vs. picture bytes verified |
+| 3 | Full Slides Only | `test_full_slide_mode_still_available`, `test_full_flow_60_slides` | 60 renders only, no `_image_` files, one figure per section, order 1..60 |
+| 4 | Slides without embedded images | `test_extraction_covers_all_cases`, `test_embedded_mode_end_to_end`, `test_embedded_full_mode_is_default_and_attaches_both` | slide 5 has no picture: text-only section in mode 1, its render only in mode 2, no `005_*_image_*` attachment |
+| 5 | Slides with multiple embedded images | same | slide 3: 4 pictures (1 + group of 3), slide 4: 2 (cropped + rotated) |
+| 6 | 60+ slides | all e2e tests | 60-slide decks throughout |
+| 7 | Article body ordering | modes 2/3 tests, `test_full_flow_60_slides` | sections 1..60 in order; figure references map to `001_…` → `060_…` in order |
+| 8 | Image-to-slide mapping | modes 1/2 tests | every `sys_attachment.do?sys_id` in the body belongs to the article; per-image `attachment_sys_id` exposed to the UI, repeated logo shares one sys_id |
+| 9 | Attachment counts | modes 1/2/3 tests | 21 / 81 / 60 and `servicenow.attachments` reports the same |
+| 10 | Hebrew filenames | modes 1/2/3 tests, `test_mode_setting_is_persistent_and_ascii_filenames` | Hebrew kept (NFC); ASCII option still works (`004_750_image_01.png`) |
+| 11 | Retry and duplicate prevention | `test_embedded_full_partial_failure_recovery`, `test_embedded_publish_partial_failure_recovery`, `test_publish_partial_failure_recovery` | failure after 65 / 7 / 20 uploads → retry completes to 81 / 21 / 60 with unique names, one article, mode unchanged |
+| 12 | Light/Dark switching | `test_dark_mode_toggle_and_persistence` | one click: `data-theme`, body/card/input colours (#0F1117 / #1A1D27 / #242936), aria-pressed, label |
+| 13 | Theme persistence after refresh | same | `localStorage` value; reload and navigation keep dark; no white surfaces left on jobs/settings/upload; system preference honoured without a stored choice |
+| 14 | RTL and LTR layouts | `test_rtl_and_ltr_layouts_keep_the_toggle_top_right` | toggle top-right and non-overlapping in both; Hebrew labels תמונות בלבד / תמונות ושקופיות / שקופיות בלבד; dark works in both |
+| 15 | Backward compatibility | `test_backward_compatibility_with_older_presentations`, `test_presentation_saved_by_older_version_gets_images_on_publish`, `test_mode_change_after_publish_requires_explicit_republish` | 1.0 article with `slide_NNN.png` files reused, not re-uploaded; job without a stored mode = `embedded`; 1.1.0 jobs get images lazily; DB column added by migration |
 
 ### v1.1.0 acceptance mapping (requirements "Embedded Image Extraction and Context-Aware Technical Knowledge Generation")
 

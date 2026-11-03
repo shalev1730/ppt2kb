@@ -5,8 +5,10 @@ article (Draft)**: every slide is rendered to an image and explained by your
 internal **Qwen Vision** model as a technical knowledge section (purpose,
 components, procedures, key facts — not a description of how the slide
 looks); the pictures and screenshots embedded in the PPTX are extracted,
-filtered conservatively, previewed, and attached under the right section with
-meaningful file names (`004_משואה_750_01.png`); everything is reviewed/edited
+filtered conservatively, previewed, and attached with meaningful file names
+(`004_משואה_750.png`, `004_משואה_750_image_01.png`) in one of three image output
+modes chosen per presentation (embedded images only / embedded images + full
+slides / full slides only); everything is reviewed/edited
 in an internal web UI (answers that fail validation are held for review) and
 then published as a draft. It is built on
 [ppt2desc](https://github.com/ALucek/ppt2desc) (MIT) and hardened for a closed
@@ -25,14 +27,14 @@ code base (Docker image, or a standalone Linux service).
                 └─► ServiceNow Table + Attachment API (internal)      kb_knowledge draft + embedded images (or full slides)
 ```
 
-## Release packages (v1.1.0)
+## Release packages (v1.1.1)
 
 | Package | What it is | Guide |
 |---|---|---|
 | `PPT2KB-Setup.exe` | Self-contained Windows 10/11 x64 installer: embedded Python, the application, LibreOffice headless + fonts. Install → desktop shortcut → browser UI on 127.0.0.1. No Python/Docker/LibreOffice needed on the PC. | [docs/INSTALL_WINDOWS.md](docs/INSTALL_WINDOWS.md) |
-| `ppt2kb-web-offline.tar` | Pre-built OCI/Docker image (`ppt2kb:1.1.0`) for the internal container host: `docker load`, configure `.env`, `docker compose up -d`. | [docs/DEPLOY_DOCKER_OFFLINE.md](docs/DEPLOY_DOCKER_OFFLINE.md) |
-| `ppt2kb-1.1.0-offline-py3.1x-x86_64.tar.gz` | Linux standalone service (no Docker) with all wheels, systemd unit and installer. | [docs/INSTALL_STANDALONE.md](docs/INSTALL_STANDALONE.md) |
-| `ppt2kb-1.1.0-src.tar.gz` | Complete source, tests, build scripts, SBOM. Rebuild any package with [docs/BUILD_REPRODUCIBLE.md](docs/BUILD_REPRODUCIBLE.md). | |
+| `ppt2kb-web-offline.tar` | Pre-built OCI/Docker image (`ppt2kb:1.1.1`) for the internal container host: `docker load`, configure `.env`, `docker compose up -d`. | [docs/DEPLOY_DOCKER_OFFLINE.md](docs/DEPLOY_DOCKER_OFFLINE.md) |
+| `ppt2kb-1.1.1-offline-py3.1x-x86_64.tar.gz` | Linux standalone service (no Docker) with all wheels, systemd unit and installer. | [docs/INSTALL_STANDALONE.md](docs/INSTALL_STANDALONE.md) |
+| `ppt2kb-1.1.1-src.tar.gz` | Complete source, tests, build scripts, SBOM. Rebuild any package with [docs/BUILD_REPRODUCIBLE.md](docs/BUILD_REPRODUCIBLE.md). | |
 
 All packages are built from this code base and provide the same UI and
 functionality. `SHA256SUMS` accompanies every delivery.

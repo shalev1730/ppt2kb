@@ -52,23 +52,30 @@ automatically.
   blank lines. Only `div/section/details/summary/h2/p/strong/ol/ul/li/figure/img/a/em`
   are emitted; all text is HTML-escaped, so nothing from a slide or from the
   model can inject markup or scripts into the article.
-* **Images** — two modes (`image_mode` per presentation, default from
-  `PPT2KB_IMAGE_ATTACHMENT_MODE`):
-  * `embedded` (default): only the pictures embedded in the PPTX that are
-    selected (automatically, then confirmed or changed by the reviewer) are
-    attached, in their original format (PNG stays PNG, JPEG stays JPEG;
+* **Images** — three modes (`image_mode` per presentation, chosen at upload,
+  default from `PPT2KB_IMAGE_ATTACHMENT_MODE` = `embedded_full`):
+  * `embedded` (Embedded Images Only): every picture embedded in the PPTX is
+    attached (identical pictures — same SHA-256 — once), in its original format (PNG stays PNG, JPEG stays JPEG;
     cropped/rotated pictures are stored as the visible portion, as PNG). File
     names are meaningful and unique:
-    `<slide 3 digits>_<sanitised slide title>_<image 2 digits>.<png|jpg>`, e.g.
-    `001_תהליך_התחברות_01.png`, `007_Error_handling_-_שגיאת_חיבור_01.jpg`. Hebrew
+    `<slide 3 digits>_<sanitised slide title>_image_<image 2 digits>.<png|jpg>`, e.g.
+    `002_תהליך_התחברות_image_01.png`, `007_Error_handling_-_שגיאת_חיבור_image_01.jpg`;
+    the body shows, under each slide's explanation, the images selected by the
+    reviewer (automatic selection first). Hebrew
     is preserved (NFC); spaces become `_`; characters other than letters,
     digits, `-` and `_` are replaced; the title part is capped at 48
     characters; collisions get `-2`, `-3`. `PPT2KB_ASCII_FILENAMES=true` strips
     non-ASCII for instances that reject Unicode names. The full-slide render is
     *not* attached in this mode (it is only used for analysis). A slide with no
-    selected image gets a text-only section — never a full-slide fallback
-    unless the reviewer switches the presentation to `full_slide`.
-  * `full_slide`: one rendered image per slide, `slide_001.png`… (1.0 behaviour).
+    selected image gets a text-only section — never a full-slide fallback.
+  * `embedded_full` (Embedded Images + Full Slides, default): the full slide
+    render of every slide is attached as `<slide 3 digits>_<sanitised title>.png`
+    (e.g. `004_משואה_750.png`) **and** every embedded picture as above; the body
+    shows the slide render directly under the heading with the explanation
+    beneath it (30 slides / 45 pictures → 30 figures in the body, 75 attachments,
+    fewer when pictures repeat).
+  * `full_slide` (Full Slides Only): the slide renders only, same names and body
+    as `embedded_full`. Articles created by 1.0 keep their `slide_001.png` files.
   Attachments go to the article record via the Attachment API and are
   referenced as `<img src="/sys_attachment.do?sys_id=<attachment sys_id>">`
   inside the section of the slide they came from, in slide order. The mapping
@@ -85,16 +92,18 @@ Each job stores the created `sys_id`/`number` locally. On re-publish:
 1. If a `sys_id` is known and still exists → it is updated (title, body) and
    missing images are uploaded; existing attachments (matched by the
    `sys_id` recorded per image, or by file name on the article) are reused.
-   Attachment names are assigned once and stored, so a retry never produces
-   `004_משואה_750_01-2.png` duplicates.
+   Attachment names are assigned once and stored (per image and per slide
+   render), so a retry never produces `004_משואה_750_image_01-2.png`
+   duplicates, and identical pictures share one attachment.
 2. If the local record was lost, the hidden marker is searched remotely
    (`textLIKEppt2kb:job=<uuid>`); a match is reused.
 3. Otherwise a new article is created. `force_new=true` on the API skips 1–2.
 
 The application only ever updates articles that carry its own marker for the
-same job; it never modifies other Knowledge articles. Changing the image mode
-or the image selection and publishing again rewrites the body of the same
-draft; attachments that are no longer referenced are left on the record (they
+same job; it never modifies other Knowledge articles. A retry keeps the mode
+the article was created with; changing the image mode marks the presentation
+and the user must republish explicitly, which rewrites the body of the same
+draft and attaches the images of the new mode; attachments that are no longer referenced are left on the record (they
 are listed in the article's *Attachments* and can be removed by the editor) —
 the tool does not delete anything on the instance.
 

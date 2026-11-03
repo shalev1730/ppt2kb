@@ -1,8 +1,8 @@
 1 ICON "../assets/ppt2kb.ico"
 
 1 VERSIONINFO
-FILEVERSION 1,1,0,0
-PRODUCTVERSION 1,1,0,0
+FILEVERSION 1,1,1,0
+PRODUCTVERSION 1,1,1,0
 FILEOS 0x40004
 FILETYPE 0x1
 BEGIN
@@ -12,12 +12,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "ppt2kb project"
       VALUE "FileDescription", "PPT2KB - PowerPoint to ServiceNow Knowledge"
-      VALUE "FileVersion", "1.1.0.0"
+      VALUE "FileVersion", "1.1.1.0"
       VALUE "InternalName", "PPT2KB"
       VALUE "LegalCopyright", "MIT License. Includes code from ppt2desc (c) 2025 Adam Lucek"
       VALUE "OriginalFilename", "PPT2KB.exe"
       VALUE "ProductName", "PPT2KB"
-      VALUE "ProductVersion", "1.1.0"
+      VALUE "ProductVersion", "1.1.1"
     END
   END
   BLOCK "VarFileInfo"

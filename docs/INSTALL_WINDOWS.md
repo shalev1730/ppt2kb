@@ -106,7 +106,7 @@ attachments, stops everything and prints PASS/FAIL per check.
 Run the new `PPT2KB-Setup.exe` over the existing installation: it stops a
 running instance, replaces the program files and keeps `config\ppt2kb.env`
 and the data folder. Downgrade the same way with the older installer.
-Upgrading from 1.0.x to 1.1.0: the local database is migrated automatically on
+Upgrading from 1.0.x or 1.1.0 to 1.1.1: the local database is migrated automatically on
 first start; presentations processed by 1.0 keep their text and get their
 embedded images extracted automatically when you publish them (or earlier,
 by re-selecting *Image attachment mode* on the presentation page).

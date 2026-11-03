@@ -110,9 +110,22 @@ network layer (transparent proxy) or allow direct access to the two hosts.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `PPT2KB_IMAGE_ATTACHMENT_MODE` | `embedded` | `embedded`: only the pictures embedded in the PPTX (PNG/JPEG, screenshots, photos, picture groups, cropped/rotated pictures) are attached to the article, each under the section of its slide. The full slide render is still produced and sent to Qwen for analysis but is **never** attached in this mode. `full_slide`: one rendered image per slide is attached (behaviour of 1.0). The value is the default for new uploads; each presentation can override it in the UI, and the publish request can override it again (`image_mode`). Settable in the UI (persisted). |
+| `PPT2KB_IMAGE_ATTACHMENT_MODE` | `embedded_full` | Default **Image output mode** for new presentations (each presentation chooses its own at upload; see the table below). `embedded` = Embedded Images Only, `embedded_full` = Embedded Images + Full Slides, `full_slide` = Full Slides Only. Settable in the UI (persisted). |
 | `PPT2KB_ASCII_FILENAMES` | `false` | `true` drops Hebrew (and any non-ASCII) characters from attachment file names (`004_750_01.png` instead of `004_משואה_750_01.png`) for instances or proxies that reject Unicode file names. |
 | `PPT2KB_QWEN_QUALITY_RETRIES` | `1` | How many times an answer that fails the quality validation (visual-only description, copied slide text, truncated/looping JSON, empty, duplicate of the previous slide) is re-requested with a corrective hint before the slide is marked **needs review**. 0 disables the retry (the validation still runs). |
+
+| Mode | Article body | Attachments |
+|---|---|---|
+| `embedded` — Embedded Images Only (תמונות בלבד) | the selected original images of each slide under its explanation; a slide without images gets title + explanation only | every original embedded image (identical images once) |
+| `embedded_full` — Embedded Images + Full Slides (תמונות ושקופיות), **default** | the complete slide render with the explanation beneath it | every full slide render **and** every original embedded image |
+| `full_slide` — Full Slides Only (שקופיות בלבד) | the complete slide render with the explanation beneath it | the full slide renders only (1.0 behaviour) |
+
+In every mode Qwen analyses the complete slide render together with the
+PPTX text; the mode never changes the analysis. The mode is stored with the
+presentation, survives restarts and retries, and is never switched silently:
+changing it after an article exists requires an explicit republish (the
+article body is rewritten and the images of the new mode attached; files of
+the previous mode stay on the article).
 
 Extraction uses `python-pptx` on the original file (no model involved) and is
 limited to `PPT2KB_MAX_SLIDES`. Vector pictures (EMF/WMF/SVG), OLE objects,

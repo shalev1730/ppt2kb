@@ -26,12 +26,12 @@ and the OS mirror (for LibreOffice) — or the wheelhouse from the bundle
 ### 1. Build host (connected)
 
 ```bash
-git clone <repo> ppt2kb && cd ppt2kb && git checkout v1.1.0
+git clone <repo> ppt2kb && cd ppt2kb && git checkout v1.1.1
 python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt -e ".[dev]"
 python -m pytest                              # must be green (needs LibreOffice locally)
 pip-audit -r requirements.txt                 # must be clean; refresh sbom/ if versions changed
-scripts/build-image.sh ppt2kb:1.1.0           # Option A
-scripts/export-image.sh ppt2kb:1.1.0 dist
+scripts/build-image.sh ppt2kb:1.1.1           # Option A
+scripts/export-image.sh ppt2kb:1.1.1 dist
 scripts/build-offline-bundle.sh --python 3.12 --arch x86_64 --out dist    # Option B (repeat per target Python)
 ls dist/ && cat dist/SHA256SUMS
 ```
@@ -47,10 +47,10 @@ ticket) so the integrity check is independent of the payload.
 ```bash
 sha256sum -c SHA256SUMS                                       # all OK
 # Option A
-scripts/import-image.sh ppt2kb-1.1.0-image.tar.gz             # docker load
+scripts/import-image.sh ppt2kb-1.1.1-image.tar.gz             # docker load
 # Option B
-tar xzf ppt2kb-1.1.0-offline-py3.12-x86_64.tar.gz
-sudo ppt2kb-1.1.0-offline-py3.12-x86_64/deploy/standalone/install.sh
+tar xzf ppt2kb-1.1.1-offline-py3.12-x86_64.tar.gz
+sudo ppt2kb-1.1.1-offline-py3.12-x86_64/deploy/standalone/install.sh
 ```
 
 Then configure (`docs/INSTALL_DOCKER.md` §3 / `docs/INSTALL_STANDALONE.md` §4)

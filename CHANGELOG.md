@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.1.1 (2026-11-03) — three image output modes, Dark Mode
+
+* **Image output mode per presentation**, chosen on the upload page before processing and stored
+  with the presentation (default from `PPT2KB_IMAGE_ATTACHMENT_MODE`, now `embedded_full`):
+  * `embedded` — *Embedded Images Only* (תמונות בלבד): body = selected original images under each
+    slide's explanation; attachments = every original image (identical images once).
+  * `embedded_full` — *Embedded Images + Full Slides* (תמונות ושקופיות), **default**: body = the full
+    slide render with the explanation beneath it; attachments = full slides + every original image.
+  * `full_slide` — *Full Slides Only* (שקופיות בלבד): body = full slide render + explanation;
+    attachments = full slides only.
+  Qwen analysis is identical in all modes (full slide render + PPTX text, independent sections).
+* Attachment names: `NNN_<slide title>.png` for slide renders, `NNN_<slide title>_image_KK.<png|jpg>`
+  for embedded images; Hebrew preserved, unique, assigned once (new `slides.attachment_file_name`
+  column, added by migration); identical pictures are uploaded once and shared; 1.0 articles keep
+  their `slide_NNN.png` files.
+* Changing the mode of a published presentation never modifies the article silently: the page shows
+  a notice and an explicit **Republish with the new mode** action; a retry of a failed publish keeps
+  the mode the article was created with.
+* **Dark Mode**: sun/moon toggle in the top-right corner (LTR and RTL), one click, remembered per
+  browser, applied before first paint, system preference used when nothing is stored; full coverage
+  of header, navigation, tables, cards, forms, dialogs, thumbnails, preview, status messages.
+* Tests: 6 new (78 total) — mode 2 end-to-end with counts/order/mapping, mode 2 retry recovery,
+  mode change / republish / no silent switch, backward compatibility, Dark Mode toggle and
+  persistence, RTL/LTR layouts (Playwright, skipped when unavailable).
+
 ## 1.1.0 (2026-11-02) — embedded image extraction, context-aware technical explanations
 
 * **Embedded images instead of slide screenshots** (`PPT2KB_IMAGE_ATTACHMENT_MODE=embedded`, default; `full_slide`

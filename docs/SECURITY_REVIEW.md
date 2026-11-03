@@ -82,6 +82,13 @@ No new outbound destinations, no new dependencies (python-pptx and Pillow were
 already in the SBOM), no change to the CSP (`default-src 'self'`): thumbnails
 are served by the application itself.
 
+**1.1.1**: the image output mode is a validated enum (`IMAGE_MODES`) on the
+upload form, the job PATCH and the publish request; the Dark Mode theme is a
+per-browser `localStorage` value applied by a same-origin script
+(`/static/theme.js`, no inline script, CSP unchanged) and never reaches the
+server; attachment names for slide renders go through the same `sanitize_title`
+path as embedded images. No new endpoints.
+
 ## 5. Data handling
 
 * Uploaded presentations, rendered slide images, extracted text and generated

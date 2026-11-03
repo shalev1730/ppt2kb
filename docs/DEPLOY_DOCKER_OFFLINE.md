@@ -1,7 +1,7 @@
 # ppt2kb-web-offline.tar — deployment guide (internal container environment)
 
 `ppt2kb-web-offline.tar` is a complete, pre-built OCI/Docker image
-(`ppt2kb:1.1.0`, Debian 12, Python 3.12, LibreOffice 7.4 headless, Hebrew and
+(`ppt2kb:1.1.1`, Debian 12, Python 3.12, LibreOffice 7.4 headless, Hebrew and
 Latin fonts, non-root). Import it into the internal Docker host; no registry
 or internet access is needed at any point.
 
@@ -9,11 +9,11 @@ or internet access is needed at any point.
 
 ```bash
 sha256sum -c SHA256SUMS                         # the lines for ppt2kb-web-offline.tar(.gz) must say OK
-docker load -i ppt2kb-web-offline.tar           # -> Loaded image: ppt2kb:1.1.0
+docker load -i ppt2kb-web-offline.tar           # -> Loaded image: ppt2kb:1.1.1
 #   (if you received the compressed file: `docker load -i ppt2kb-web-offline.tar.gz` works directly,
 #    or `gunzip -k ppt2kb-web-offline.tar.gz` to obtain the exact .tar listed in SHA256SUMS)
-docker images ppt2kb                            # ppt2kb  1.1.0  ...  ~620MB
-docker run --rm ppt2kb:1.1.0 soffice --version  # smoke test: prints the LibreOffice version
+docker images ppt2kb                            # ppt2kb  1.1.1  ...  ~620MB
+docker run --rm ppt2kb:1.1.1 soffice --version  # smoke test: prints the LibreOffice version
 ```
 
 Podman works the same way (`podman load -i ...`, `podman-compose` or
@@ -85,16 +85,16 @@ docker run -d --name ppt2kb --restart unless-stopped --env-file .env \
   -e PPT2KB_CA_BUNDLE=/certs/ca.pem -p 8080:8080 \
   -v ppt2kb-data:/data -v "$PWD/certs:/certs:ro" \
   --read-only --tmpfs /tmp:size=1g --cap-drop ALL --security-opt no-new-privileges \
-  --memory 6g --cpus 4 --pids-limit 512 ppt2kb:1.1.0
+  --memory 6g --cpus 4 --pids-limit 512 ppt2kb:1.1.1
 ```
 
 ## 4. Update to a new version
 
 ```bash
-sha256sum -c SHA256SUMS && docker load -i ppt2kb-web-offline.tar   # new tar, e.g. ppt2kb:1.1.0 (from 1.0.x: the database is migrated automatically on first start)
-sed -i 's/^PPT2KB_IMAGE=.*/PPT2KB_IMAGE=ppt2kb:1.1.0/' .env
+sha256sum -c SHA256SUMS && docker load -i ppt2kb-web-offline.tar   # new tar, e.g. ppt2kb:1.1.1 (from 1.0.x: the database is migrated automatically on first start)
+sed -i 's/^PPT2KB_IMAGE=.*/PPT2KB_IMAGE=ppt2kb:1.1.1/' .env
 docker compose up -d                 # recreates the container; the data volume and .env are reused
-docker image rm ppt2kb:1.0.1         # optional: remove the previous image after verifying the new version
+docker image rm ppt2kb:1.1.0         # optional: remove the previous image after verifying the new version
 ```
 
 Roll back by setting `PPT2KB_IMAGE` to the previous tag and `docker compose up -d`.
@@ -114,10 +114,10 @@ variables are ignored by the application and cleared for LibreOffice.
 ## 6. Verifying the image before approval
 
 ```bash
-docker run --rm ppt2kb:1.1.0 id                                   # uid=10001(ppt2kb)
-docker run --rm ppt2kb:1.1.0 python -c "import ppt2kb;print(ppt2kb.__version__)"
-docker run --rm ppt2kb:1.1.0 /opt/ppt2kb/bin/pip list 2>/dev/null || docker run --rm ppt2kb:1.1.0 ls /opt/ppt2kb/lib/python3.12/site-packages
-docker run --rm ppt2kb:1.1.0 cat /app/THIRD_PARTY_NOTICES.md
+docker run --rm ppt2kb:1.1.1 id                                   # uid=10001(ppt2kb)
+docker run --rm ppt2kb:1.1.1 python -c "import ppt2kb;print(ppt2kb.__version__)"
+docker run --rm ppt2kb:1.1.1 /opt/ppt2kb/bin/pip list 2>/dev/null || docker run --rm ppt2kb:1.1.1 ls /opt/ppt2kb/lib/python3.12/site-packages
+docker run --rm ppt2kb:1.1.1 cat /app/THIRD_PARTY_NOTICES.md
 # reproduce the image from source (see docs/BUILD_REPRODUCIBLE.md)
 ```
 

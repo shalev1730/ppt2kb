@@ -8,8 +8,8 @@ with a read-only root file system; all state is in the `/data` volume.
 
 ```bash
 git clone <internal repo>/ppt2kb && cd ppt2kb
-scripts/build-image.sh ppt2kb:1.1.0
-#   equivalent: docker build -f deploy/docker/Dockerfile -t ppt2kb:1.1.0 .
+scripts/build-image.sh ppt2kb:1.1.1
+#   equivalent: docker build -f deploy/docker/Dockerfile -t ppt2kb:1.1.1 .
 ```
 
 Using internal mirrors instead of the internet:
@@ -18,7 +18,7 @@ Using internal mirrors instead of the internet:
 PIP_INDEX_URL=https://nexus.internal/repository/pypi/simple \
 PIP_TRUSTED_HOST=nexus.internal \
 APT_MIRROR=http://mirror.internal/debian \
-scripts/build-image.sh ppt2kb:1.1.0
+scripts/build-image.sh ppt2kb:1.1.1
 ```
 
 Fully offline build (no PyPI at all): put the wheels produced by
@@ -31,16 +31,16 @@ connected side and transfer the image** (next section).
 Smoke test the image:
 
 ```bash
-docker run --rm ppt2kb:1.1.0 python -c "import ppt2kb;print(ppt2kb.__version__)"
-docker run --rm ppt2kb:1.1.0 soffice --version
+docker run --rm ppt2kb:1.1.1 python -c "import ppt2kb;print(ppt2kb.__version__)"
+docker run --rm ppt2kb:1.1.1 soffice --version
 ```
 
 ## 2. Export / import for the air-gapped site
 
 ```bash
-scripts/export-image.sh ppt2kb:1.1.0 dist      # -> dist/ppt2kb-1.1.0-image.tar.gz + SHA256SUMS
+scripts/export-image.sh ppt2kb:1.1.1 dist      # -> dist/ppt2kb-1.1.1-image.tar.gz + SHA256SUMS
 # transfer dist/ to the target site (approved media / transfer gateway)
-scripts/import-image.sh dist/ppt2kb-1.1.0-image.tar.gz   # verifies the checksum, docker load
+scripts/import-image.sh dist/ppt2kb-1.1.1-image.tar.gz   # verifies the checksum, docker load
 ```
 
 Also transfer `deploy/docker/` (Compose file + `.env.example`) and `docs/`.
@@ -86,7 +86,7 @@ docker run -d --name ppt2kb --restart unless-stopped \
   --env-file deploy/docker/.env -e PPT2KB_CA_BUNDLE=/certs/ca.pem \
   -p 8080:8080 -v ppt2kb-data:/data -v $PWD/deploy/docker/certs:/certs:ro \
   --read-only --tmpfs /tmp:size=1g --cap-drop ALL --security-opt no-new-privileges \
-  --memory 6g --cpus 4 --pids-limit 512 ppt2kb:1.1.0
+  --memory 6g --cpus 4 --pids-limit 512 ppt2kb:1.1.1
 ```
 
 ## 5. Data volume
@@ -109,8 +109,8 @@ uploads. Alternatively enable Basic auth with `PPT2KB_UI_USERNAME/PASSWORD`.
 ## 7. Upgrade
 
 ```bash
-scripts/import-image.sh dist/ppt2kb-1.1.0-image.tar.gz
-sed -i 's/^PPT2KB_IMAGE=.*/PPT2KB_IMAGE=ppt2kb:1.1.0/' deploy/docker/.env
+scripts/import-image.sh dist/ppt2kb-1.1.1-image.tar.gz
+sed -i 's/^PPT2KB_IMAGE=.*/PPT2KB_IMAGE=ppt2kb:1.1.1/' deploy/docker/.env
 docker compose -f deploy/docker/docker-compose.yml up -d     # data volume is reused; schema migrates automatically
 ```
 
@@ -125,7 +125,7 @@ internal names are not resolvable from the Docker host.
 
 | Symptom | Check |
 |---|---|
-| `status: degraded`, `libreoffice: false` in `/api/health` | image build incomplete; `docker run --rm ppt2kb:1.1.0 soffice --version` |
+| `status: degraded`, `libreoffice: false` in `/api/health` | image build incomplete; `docker run --rm ppt2kb:1.1.1 soffice --version` |
 | job status `failed: conversion failed: LibreOffice conversion timed out` | raise `PPT2KB_CONVERSION_TIMEOUT_S` / `PPT2KB_CONVERSION_MEMORY_MB` and the container memory limit |
 | slides `failed: connection error` | Qwen URL/DNS/CA; test with **Settings → Test connection**; check `PPT2KB_ALLOWED_OUTBOUND_HOSTS` |
 | `Outbound host ... is not allow-listed` in logs | add the host (host or host:port) to `PPT2KB_ALLOWED_OUTBOUND_HOSTS` |
