@@ -14,6 +14,7 @@
     document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
     (root || document).querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.getAttribute("data-i18n")); });
     document.getElementById("lang-toggle").textContent = lang === "he" ? "English" : "עברית";
+    if (document.getElementById("theme-toggle")) applyTheme(currentTheme());  // refresh the toggle's label in the new language
   }
   document.getElementById("lang-toggle").addEventListener("click", () => {
     lang = lang === "he" ? "en" : "he";
@@ -21,6 +22,21 @@
     applyLang();
     route();
   });
+
+  // ------------------------------------------------------------------ theme
+  // The choice is kept per browser (localStorage) and applied before the first paint by /static/theme.js
+  // (loaded in <head>), so there is no flash; without a choice the system preference is followed. No backend involvement.
+  function currentTheme() { return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"; }
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    const b = document.getElementById("theme-toggle");
+    const dark = theme === "dark";
+    b.setAttribute("aria-pressed", dark ? "true" : "false");
+    const label = t(dark ? "theme.toLight" : "theme.toDark");
+    b.title = label; b.setAttribute("aria-label", label);
+    try { localStorage.setItem("ppt2kb.theme", theme); } catch (e) { /* ignore */ }
+  }
+  document.getElementById("theme-toggle").addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark"));
 
   // ------------------------------------------------------------------ utils
   const $ = (sel, root) => (root || document).querySelector(sel);
@@ -114,6 +130,8 @@
     try {
       const cfg = await api("GET", "/api/config");
       $("#upload-limits", view).textContent = t("upload.limits", { mb: cfg.max_upload_mb, slides: cfg.max_slides });
+      const def = $('#upload-mode input[value="' + (cfg.image_attachment_mode || "embedded_full") + '"]', view);
+      if (def) def.checked = true;
     } catch (e) { /* ignore */ }
     const dz = $("#dropzone", view), input = $("#file", view), nameEl = $("#file-name", view);
     input.addEventListener("change", () => { nameEl.textContent = input.files[0] ? input.files[0].name + " (" + Math.round(input.files[0].size / 1024 / 1024 * 10) / 10 + " MB)" : ""; });
@@ -126,6 +144,8 @@
       const fd = new FormData();
       fd.append("file", input.files[0]);
       fd.append("title", $("#title", view).value);
+      const modeIn = $('#upload-mode input[name="image_mode"]:checked', view);
+      fd.append("image_mode", modeIn ? modeIn.value : "embedded_full");
       const btn = $("#upload-btn", view), prog = $("#upload-progress", view);
       btn.disabled = true; prog.hidden = false; prog.value = 0;
       const xhr = new XMLHttpRequest();
@@ -181,14 +201,17 @@
     $("#show-original", view).addEventListener("change", () => renderSlides(view, state.job));
     const modeSel = $("#job-image-mode", view);
     modeSel.addEventListener("change", async () => {
+      const prev = state.job ? state.job.image_mode : "";
+      const published = !!(state.job && state.job.servicenow && state.job.servicenow.sys_id);
+      if (published && !confirm(t("job.confirmModeChange"))) { modeSel.value = prev; return; }
       try {
         await api("PATCH", "/api/jobs/" + jobId, { image_mode: modeSel.value });
         toast(t("job.modeSaved"));
-        if (modeSel.value === "embedded" && state.job && state.job.images_total === 0 && state.job.slide_count) {
+        if (modeSel.value !== "full_slide" && state.job && state.job.images_total === 0 && state.job.slide_count && state.job.source_kind === "pptx") {
           try { await api("POST", "/api/jobs/" + jobId + "/images/extract"); } catch (e) { /* reported on publish */ }
         }
         load();
-      } catch (e) { toast(t("common.error", { msg: e.message }), true); }
+      } catch (e) { modeSel.value = prev; toast(t("common.error", { msg: e.message }), true); }
     });
 
     const kbSelect = $("#kb-select", view);
@@ -210,7 +233,8 @@
       if (state.job.counts.done !== state.job.slide_count || !state.job.slide_count) { toast(t("publish.needAll"), true); return; }
       if (!kbSelect.value) { toast(t("publish.kb"), true); return; }
       if (modeSel.value === "embedded" && state.job.images_selected === 0 && !confirm(t("publish.confirmNoImages"))) return;
-      if (!confirm(t("publish.confirm"))) return;
+      const changed = !!(state.job.servicenow && state.job.servicenow.mode_changed);
+      if (!confirm(t(changed ? "publish.confirmRepublish" : "publish.confirm"))) return;
       try {
         await api("POST", "/api/jobs/" + jobId + "/publish", { kb_sys_id: kbSelect.value, attach_pptx: $("#attach-pptx", view).checked, image_mode: modeSel.value });
         load();
@@ -230,7 +254,9 @@
         $("#c-review", view).textContent = review; $("#c-review-pill", view).hidden = !review;
         const imgPill = $("#c-images", view);
         imgPill.hidden = !job.slide_count || job.source_kind === "ppt";
-        imgPill.textContent = t("job.imagesCount", { sel: job.images_selected || 0, total: job.images_total || 0 });
+        imgPill.textContent = (job.image_mode || "embedded") === "embedded"
+          ? t("job.imagesCount", { sel: job.images_selected || 0, total: job.images_total || 0 })
+          : t("job.imagesAttached", { total: job.images_total || 0 });
         $("#job-progress", view).value = job.slide_count ? Math.round((job.counts.done + review) / job.slide_count * 100) : (job.status === "converting" ? 5 : 0);
         const running = ["converting", "describing", "publishing", "uploaded"].includes(job.status) || job.active;
         const resumable = job.counts.pending + job.counts.processing + job.counts.failed > 0 || ["uploaded", "interrupted"].includes(job.status);
@@ -239,11 +265,15 @@
         $("#btn-cancel", view).hidden = !(job.active && ["converting", "describing"].includes(job.status));
         $("#btn-publish", view).disabled = running || review > 0 || job.counts.done !== job.slide_count || !job.slide_count;
         $("#publish-review-note", view).hidden = !review;
-        if (document.activeElement !== modeSel) modeSel.value = job.image_mode || "embedded";
+        const mode = job.image_mode || "embedded";
+        if (document.activeElement !== modeSel) modeSel.value = mode;
+        $("#job-mode-pill", view).textContent = t("mode.title") + ": " + t("mode." + mode);
+        const modeChanged = !!(job.servicenow && job.servicenow.mode_changed);
+        $("#publish-mode-changed", view).hidden = !modeChanged;
+        $("#btn-publish", view).textContent = t(modeChanged ? "publish.republish" : (job.servicenow && job.servicenow.number ? "publish.update" : "publish.create"));
         const imgNote = $("#publish-images-note", view);
-        imgNote.textContent = (job.image_mode || "embedded") === "embedded"
-          ? t("publish.imagesEmbedded", { sel: job.images_selected || 0, total: job.images_total || 0 })
-          : t("publish.imagesFull", { n: job.slide_count || 0 });
+        const vars = { sel: job.images_selected || 0, total: job.images_total || 0, n: job.slide_count || 0 };
+        imgNote.textContent = mode === "embedded" ? t("publish.imagesEmbedded", vars) : mode === "embedded_full" ? t("publish.imagesEmbeddedFull", vars) : t("publish.imagesFull", vars);
         if (!state.kbLoaded && job.kb_sys_id && !kbSelect.value) { kbSelect.innerHTML = ""; kbSelect.appendChild(el("option", { value: job.kb_sys_id, text: job.kb_sys_id })); }
         renderPublishResult(view, job);
         renderSlides(view, job);
@@ -390,24 +420,27 @@
   function renderThumbs(node, s, job) {
     const box = $(".slide-images", node), thumbs = $(".thumbs", node);
     const images = s.images || [];
-    const embeddedMode = !job || (job.image_mode || "embedded") === "embedded";
-    box.hidden = !embeddedMode || (job && job.source_kind === "ppt");
+    const mode = job ? (job.image_mode || "embedded") : "embedded";
+    box.hidden = mode === "full_slide" || (job && job.source_kind === "ppt");
     if (box.hidden) return;
+    $(".slide-images-title", node).textContent = t(mode === "embedded" ? "slide.embedded" : "slide.embeddedAttachOnly");
     const selected = images.filter(i => i.selected).length;
-    $(".slide-images-count", node).textContent = images.length ? t("slide.imagesCount", { sel: selected, total: images.length }) : "";
+    const selectable = mode === "embedded";
+    $(".slide-images-count", node).textContent = images.length ? (selectable ? t("slide.imagesCount", { sel: selected, total: images.length }) : t("slide.imagesAttachedAll", { total: images.length })) : "";
     $(".slide-images-empty", node).hidden = images.length > 0;
-    const key = JSON.stringify(images.map(i => [i.idx, i.selected, i.file_name, i.attachment_sys_id]));
+    const key = JSON.stringify([mode, images.map(i => [i.idx, i.selected, i.file_name, i.attachment_sys_id])]);
     if (thumbs.dataset.key === key) return;  // unchanged - keep the DOM (and any checkbox the user is clicking)
     thumbs.dataset.key = key;
     thumbs.innerHTML = "";
     images.forEach(im => {
-      const card = el("div", { class: "thumb" + (im.selected ? "" : " excluded") + (im.flagged ? " flagged" : "") });
+      const card = el("div", { class: "thumb" + (im.selected || !selectable ? "" : " excluded") + (im.flagged ? " flagged" : "") });
       if (im.url) card.appendChild(el("img", { src: im.url, loading: "lazy", alt: (im.shape_name || "image") + " " + im.idx }));
       else card.appendChild(el("div", { class: "thumb-missing", text: t("slide.imageUnsupported", { fmt: im.original_format || "?" }) }));
       const cb = el("input", { type: "checkbox", class: "thumb-select", "data-idx": im.idx });
       cb.checked = !!im.selected;
       if (!im.supported || !im.url) cb.disabled = true;
       const label = el("label", { class: "check" }, [cb, el("span", { text: t("slide.includeImage") })]);
+      if (mode !== "embedded") label.hidden = true;  // in the other modes every embedded image is attached; nothing to choose
       card.appendChild(label);
       const meta = [];
       meta.push((im.original_format || "").toUpperCase() + (im.width && im.height ? " " + im.width + "×" + im.height : ""));
@@ -425,7 +458,7 @@
         const tr = t(key);
         return tr === key ? m[2] : tr;
       });
-      if (reasons.length) card.appendChild(el("div", { class: "muted thumb-reasons", text: (im.auto_selected ? t("img.autoIncluded") : t("img.autoExcluded")) + ": " + reasons.join(", ") }));
+      if (reasons.length) card.appendChild(el("div", { class: "muted thumb-reasons", text: (selectable ? (im.auto_selected ? t("img.autoIncluded") : t("img.autoExcluded")) + ": " : "") + reasons.join(", ") }));
       if (im.flagged) card.appendChild(el("div", { class: "err thumb-flag", text: t("img.flagged") }));
       if (im.note) card.appendChild(el("div", { class: "muted", text: im.note }));
       thumbs.appendChild(card);

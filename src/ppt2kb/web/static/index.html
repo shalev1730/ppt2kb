@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ppt2kb</title>
+<script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/styles.css">
 <link rel="icon" href="data:,">
 </head>
@@ -23,6 +24,10 @@
     <button id="lang-toggle" class="btn btn-ghost" type="button">עברית</button>
   </div>
 </header>
+<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false" title="Switch to dark mode" aria-label="Switch to dark mode">
+  <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
 
 <main id="view" class="container"></main>
 
@@ -62,6 +67,16 @@
       <label><span data-i18n="upload.articleTitle">Article title (optional)</span>
         <input type="text" name="title" maxlength="160" id="title">
       </label>
+      <fieldset class="mode-select" id="upload-mode">
+        <legend data-i18n="mode.title">Image output mode</legend>
+        <p class="muted mode-help" data-i18n="mode.help">Qwen always analyses the complete slide. The mode only decides which images go into the Knowledge article and its attachments.</p>
+        <label class="mode-option"><input type="radio" name="image_mode" value="embedded">
+          <span><strong data-i18n="mode.embedded">Embedded Images Only</strong><small data-i18n="mode.embedded.desc">Article body: the original images from each slide + explanation. Attachments: the original images only.</small></span></label>
+        <label class="mode-option"><input type="radio" name="image_mode" value="embedded_full" checked>
+          <span><strong data-i18n="mode.embedded_full">Embedded Images + Full Slides</strong><small data-i18n="mode.embedded_full.desc">Article body: the complete slide + explanation. Attachments: the complete slides and the original images.</small></span></label>
+        <label class="mode-option"><input type="radio" name="image_mode" value="full_slide">
+          <span><strong data-i18n="mode.full_slide">Full Slides Only</strong><small data-i18n="mode.full_slide.desc">Article body: the complete slide + explanation. Attachments: the complete slides only.</small></span></label>
+      </fieldset>
       <p class="muted" id="upload-limits"></p>
       <div class="row">
         <button class="btn btn-primary" type="submit" id="upload-btn" data-i18n="upload.start">Upload and process</button>
@@ -78,6 +93,7 @@
         <a href="#/jobs" class="muted">&larr; <span data-i18n="job.back">All presentations</span></a>
         <h1 id="job-title" class="editable" contenteditable="true" spellcheck="false"></h1>
         <div class="muted" id="job-meta"></div>
+        <div class="row gap" style="margin-top:0.3rem"><span class="pill info" id="job-mode-pill"></span></div>
       </div>
       <div class="row gap wrap" id="job-actions">
         <button class="btn" id="btn-resume" data-i18n="job.resume" hidden>Resume</button>
@@ -114,10 +130,11 @@
           <select id="kb-select"><option value="" data-i18n="publish.loadKb">Load knowledge bases…</option></select>
         </label>
         <button class="btn" id="btn-load-kb" data-i18n="publish.refreshKb">Load from ServiceNow</button>
-        <label><span data-i18n="publish.imageMode">Image attachment mode</span>
+        <label><span data-i18n="mode.title">Image output mode</span>
           <select id="job-image-mode">
-            <option value="embedded" data-i18n="imageMode.embedded">Embedded images only</option>
-            <option value="full_slide" data-i18n="imageMode.full_slide">Full slide renders</option>
+            <option value="embedded" data-i18n="mode.embedded">Embedded Images Only</option>
+            <option value="embedded_full" data-i18n="mode.embedded_full">Embedded Images + Full Slides</option>
+            <option value="full_slide" data-i18n="mode.full_slide">Full Slides Only</option>
           </select>
         </label>
         <label class="check"><input type="checkbox" id="attach-pptx"> <span data-i18n="publish.attachPptx">Attach original PPTX</span></label>
@@ -126,6 +143,7 @@
       <p class="muted" data-i18n="publish.note">The article is created in Draft state. Publication goes through the normal ServiceNow review workflow.</p>
       <p class="muted" id="publish-images-note"></p>
       <p class="err" id="publish-review-note" hidden data-i18n="publish.needReview">Some slides need review. Edit and accept them (or re-run them) before publishing.</p>
+      <p class="warn-note" id="publish-mode-changed" hidden data-i18n="publish.modeChanged">The image output mode was changed after the article was created. Click "Republish with the new mode" to rewrite the article body and attach the images of the new mode. Attachments of the previous mode stay on the article until you remove them in ServiceNow.</p>
       <div id="publish-result" class="result" hidden></div>
     </div>
 
@@ -152,7 +170,7 @@
         <figure class="slide-image"><img loading="lazy" alt=""><figcaption class="muted" data-i18n="slide.fullRender">Full slide render (sent to Qwen for analysis)</figcaption></figure>
         <div class="slide-images">
           <div class="row between wrap">
-            <strong data-i18n="slide.embedded">Embedded images (attached to the article)</strong>
+            <strong class="slide-images-title" data-i18n="slide.embedded">Embedded images (attached to the article)</strong>
             <span class="muted slide-images-count"></span>
           </div>
           <p class="muted slide-images-empty" hidden data-i18n="slide.noEmbedded">No embedded images were found in this slide. Shapes, SmartArt and text boxes are not extracted.</p>
@@ -216,11 +234,12 @@
       <h2 data-i18n="settings.proc">Images and quality</h2>
       <label><span data-i18n="settings.imageMode">Image attachment mode (default for new presentations)</span>
         <select name="image_attachment_mode">
-          <option value="embedded" data-i18n="imageMode.embedded">Embedded images only</option>
-          <option value="full_slide" data-i18n="imageMode.full_slide">Full slide renders</option>
+          <option value="embedded" data-i18n="mode.embedded">Embedded Images Only</option>
+          <option value="embedded_full" data-i18n="mode.embedded_full">Embedded Images + Full Slides</option>
+          <option value="full_slide" data-i18n="mode.full_slide">Full Slides Only</option>
         </select>
       </label>
-      <p class="muted" data-i18n="settings.imageModeHelp">Embedded: only pictures and screenshots extracted from the PPTX are attached, with meaningful file names (e.g. 004_משואה_750_01.png). The full slide render is always sent to Qwen for analysis but is never attached in this mode. Full slide: attaches one rendered image per slide (previous behaviour).</p>
+      <p class="muted" data-i18n="settings.imageModeHelp">Default for new presentations; each presentation can choose its own mode at upload. Embedded Images Only: original images in the article body and attachments. Embedded Images + Full Slides: full slides in the body; full slides and original images as attachments. Full Slides Only: full slides in the body and attachments. Qwen always analyses the complete slide.</p>
       <div class="grid2">
         <label><span data-i18n="settings.qualityRetries">Quality retries per slide (answers that fail validation)</span><input name="qwen_quality_retries" type="number" min="0" max="5"></label>
         <label class="check"><input type="checkbox" name="ascii_filenames"> <span data-i18n="settings.asciiNames">ASCII-only attachment file names (drop Hebrew from names)</span></label>

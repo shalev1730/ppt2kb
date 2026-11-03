@@ -1,6 +1,7 @@
 :root {
   --bg: #f4f6f9;
   --surface: #ffffff;
+  --elevated: #ffffff;
   --text: #1c2430;
   --muted: #5e6b7b;
   --border: #d9dee6;
@@ -9,14 +10,31 @@
   --ok: #1b7f4b;
   --warn: #9a6400;
   --err: #b42318;
+  --review: #7a3db8;
+  --checker-a: #e5e7eb;
+  --checker-b: #ffffff;
   --radius: 10px;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+  color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #11161d; --surface: #1a2230; --text: #e7ecf3; --muted: #9aa7b8; --border: #2c3747;
-    --primary: #4f8df5; --ok: #3ccf7a; --warn: #f0b24a; --err: #ff6b5c;
-  }
+/* Dark Mode (1.1.1): chosen with the sun/moon toggle, stored per browser; light is the default. */
+:root[data-theme="dark"] {
+  --bg: #0F1117;
+  --surface: #1A1D27;
+  --elevated: #242936;
+  --text: #F1F5F9;
+  --muted: #A8B3C5;
+  --border: #343B4A;
+  --primary: #4f8df5;
+  --primary-ink: #ffffff;
+  --ok: #3ccf7a;
+  --warn: #f0b24a;
+  --err: #ff6b5c;
+  --review: #b78cf0;
+  --checker-a: #2b3140;
+  --checker-b: #1A1D27;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -74,7 +92,7 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
 .slide-body { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(300px, 1.1fr); gap: 1rem; }
 @media (max-width: 900px) { .slide-body { grid-template-columns: 1fr; } }
 .slide-image { margin: 0; }
-.slide-image img { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+.slide-image img { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; background: #fff; }  /* slide renders are white by design */
 .slide-head { margin-bottom: 0.5rem; }
 .slide pre { white-space: pre-wrap; background: var(--bg); padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; max-height: 300px; overflow: auto; }
 .slide.failed { border-color: var(--err); }
@@ -86,13 +104,14 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
 .kv dd { margin: 0; word-break: break-all; }
 .toast { position: fixed; bottom: 1.2rem; inset-inline-start: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 0.6rem 1rem; border-radius: 8px; box-shadow: var(--shadow); z-index: 20; max-width: 90vw; }
 .toast.err { background: var(--err); color: #fff; }
+:root[data-theme="dark"] .toast { background: var(--elevated); color: var(--text); border: 1px solid var(--border); }
+:root[data-theme="dark"] .toast.err { background: #5a1d17; color: #fff; border-color: var(--err); }
 dialog { border: 1px solid var(--border); border-radius: var(--radius); max-width: 1000px; width: 92vw; padding: 0; background: var(--surface); color: var(--text); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
 dialog .dialog-body { max-height: 75vh; overflow: auto; padding: 1rem; }
 dialog header { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); }
 html[dir=rtl] .toast { transform: translateX(50%); }
 /* v1.1: embedded images, review state */
-:root { --review: #7a3db8; }
-@media (prefers-color-scheme: dark) { :root { --review: #b78cf0; } }
 .pill.review { color: var(--review); border-color: var(--review); }
 .slide.review { border-color: var(--review); }
 .slide-visuals { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
@@ -100,7 +119,7 @@ html[dir=rtl] .toast { transform: translateX(50%); }
 .slide-images { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; background: var(--bg); }
 .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; margin-top: 0.5rem; }
 .thumb { border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem; background: var(--surface); font-size: 0.8rem; min-width: 0; }
-.thumb img { width: 100%; height: 110px; object-fit: contain; background: repeating-conic-gradient(#e5e7eb 0 25%, #fff 0 50%) 0 0 / 16px 16px; border-radius: 4px; border: 1px solid var(--border); }
+.thumb img { width: 100%; height: 110px; object-fit: contain; background: repeating-conic-gradient(var(--checker-a) 0 25%, var(--checker-b) 0 50%) 0 0 / 16px 16px; border-radius: 4px; border: 1px solid var(--border); }
 .thumb.excluded img { opacity: 0.35; }
 .thumb.excluded { border-style: dashed; }
 .thumb.flagged { border-color: var(--err); }
@@ -110,3 +129,41 @@ html[dir=rtl] .toast { transform: translateX(50%); }
 .thumb-missing { height: 110px; display: grid; place-items: center; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: 4px; padding: 0.3rem; }
 .slide-quality { border: 1px solid var(--review); background: color-mix(in srgb, var(--review) 8%, transparent); border-radius: 8px; padding: 0.5rem 0.8rem; margin-bottom: 0.5rem; font-size: 0.9rem; }
 .slide-quality ul { margin: 0.3rem 0 0.2rem; padding-inline-start: 1.2rem; }
+
+/* ---- 1.1.1: theme toggle (always top-right, both directions), image mode selector, dark-mode coverage */
+.theme-toggle { position: fixed; top: 0.55rem; right: 16px; z-index: 6; width: 38px; height: 38px; display: inline-grid; place-items: center; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; box-shadow: var(--shadow); }
+.theme-toggle:hover { border-color: var(--primary); color: var(--primary); }
+.theme-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.theme-toggle .icon-moon { display: none; }
+:root[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+html[dir=ltr] .topbar { padding-right: 64px; }   /* keep the health pill and language button clear of the toggle */
+html[dir=rtl] .topbar { padding-right: 64px; }   /* in RTL the brand sits on the right; make room for the toggle */
+.mode-select { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 0.9rem 0.4rem; margin: 0.8rem 0; }
+.mode-select legend { font-weight: 600; padding: 0 0.3rem; }
+.mode-select .mode-help { margin: 0 0 0.5rem; font-size: 0.88rem; }
+.mode-option { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.45rem 0.5rem; border-radius: 8px; margin: 0.15rem 0; cursor: pointer; }
+.mode-option:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.mode-option input { margin-top: 0.3rem; }
+.mode-option strong { display: block; }
+.mode-option small { display: block; color: var(--muted); }
+.mode-option:has(input:checked) { background: color-mix(in srgb, var(--primary) 12%, transparent); outline: 1px solid var(--primary); }
+.warn-note { color: var(--warn); border: 1px solid var(--warn); border-radius: 8px; padding: 0.5rem 0.8rem; background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.pill.info { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+input[type=text], input[type=url], input[type=password], input[type=number], input:not([type]), select, textarea { color-scheme: inherit; }
+:root[data-theme="dark"] input[type=text], :root[data-theme="dark"] input[type=url], :root[data-theme="dark"] input[type=password], :root[data-theme="dark"] input[type=number], :root[data-theme="dark"] input:not([type]), :root[data-theme="dark"] select, :root[data-theme="dark"] textarea { background: var(--elevated); border-color: var(--border); color: var(--text); }
+:root[data-theme="dark"] .table, :root[data-theme="dark"] .card, :root[data-theme="dark"] .slide-images, :root[data-theme="dark"] .thumb, :root[data-theme="dark"] .slide pre { background: var(--surface); }
+:root[data-theme="dark"] .slide pre, :root[data-theme="dark"] .slide-images { background: var(--elevated); }
+:root[data-theme="dark"] .btn { background: var(--elevated); }
+:root[data-theme="dark"] .btn-primary { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+:root[data-theme="dark"] .btn-ghost { background: transparent; }
+:root[data-theme="dark"] .result { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+:root[data-theme="dark"] .result.err { background: color-mix(in srgb, var(--err) 14%, transparent); }
+:root[data-theme="dark"] progress { accent-color: var(--primary); background: var(--elevated); }
+:root[data-theme="dark"] .dropzone { background: var(--elevated); }
+:root[data-theme="dark"] .pill { background: var(--elevated); }
+:root[data-theme="dark"] a { color: #7fb0ff; }
+:root[data-theme="dark"] .topbar nav a.active { border-bottom-color: #7fb0ff; }
+/* the server-rendered article preview inside the dialog */
+:root[data-theme="dark"] #preview-dialog .ppt2kb-article { color: var(--text); }
+:root[data-theme="dark"] #preview-dialog .ppt2kb-article img { background: #fff; border-radius: 4px; }
