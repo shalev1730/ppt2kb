@@ -90,9 +90,10 @@ class Settings(BaseSettings):
     qwen_quality_retries: int = 1
 
     # ------------------------------------------------------------ attachments
-    # embedded  = attach only the images embedded in the slides (default)
-    # full_slide = attach the rendered slide screenshots (1.0 behaviour)
-    image_attachment_mode: str = "embedded"
+    # embedded      = body: embedded images;  attachments: embedded images only
+    # embedded_full = body: full slide render; attachments: full slides + embedded images (default since 1.1.1)
+    # full_slide    = body: full slide render; attachments: full slides only (1.0 behaviour)
+    image_attachment_mode: str = "embedded_full"
     # Use ASCII-only attachment file names (Hebrew titles replaced) if the
     # ServiceNow instance rejects Unicode file names.
     ascii_filenames: bool = False
@@ -153,8 +154,10 @@ class Settings(BaseSettings):
     @classmethod
     def _mode(cls, v: str) -> str:
         v = v.lower()
-        if v not in ("embedded", "full_slide"):
-            raise ValueError("image_attachment_mode must be embedded or full_slide")
+        from .schemas.deck import IMAGE_MODES
+
+        if v not in IMAGE_MODES:
+            raise ValueError("image_attachment_mode must be one of " + ", ".join(IMAGE_MODES))
         return v
 
     @field_validator("servicenow_auth_type")

@@ -1,7 +1,10 @@
 """
-Meaningful attachment file names: ``001_משואה_750_01.png``.
+Meaningful attachment file names.
 
-``<slide:03d>_<sanitised title>_<image:02d>.<ext>`` - Hebrew and English
+  full slide render : ``001_משואה_750.png``
+  embedded image    : ``001_משואה_750_image_01.png``
+
+``<slide:03d>_<sanitised title>[_image_<nn>].<ext>`` - Hebrew and English
 letters, digits, ``-`` and ``_`` are kept; everything else becomes ``_``;
 length is capped; duplicates get a numeric suffix. With ``ascii_only`` the
 title part is reduced to ASCII (Hebrew removed; ``slide`` if nothing is left)
@@ -28,8 +31,7 @@ def sanitize_title(title: str, *, ascii_only: bool = False, max_len: int = 48) -
     return t or "slide"
 
 
-def attachment_filename(slide_number: int, title: str, image_index: int, ext: str, *, used: Set[str], ascii_only: bool = False) -> str:
-    base = f"{slide_number:03d}_{sanitize_title(title, ascii_only=ascii_only)}_{image_index:02d}"
+def _unique(base: str, ext: str, used: Set[str]) -> str:
     ext = "jpg" if ext.lower() in ("jpeg", "jpg") else "png"
     name = f"{base}.{ext}"
     n = 2
@@ -38,3 +40,13 @@ def attachment_filename(slide_number: int, title: str, image_index: int, ext: st
         n += 1
     used.add(name.lower())
     return name
+
+
+def attachment_filename(slide_number: int, title: str, image_index: int, ext: str, *, used: Set[str], ascii_only: bool = False) -> str:
+    """Name of an embedded image: ``004_משואה_750_image_01.png``."""
+    return _unique(f"{slide_number:03d}_{sanitize_title(title, ascii_only=ascii_only)}_image_{image_index:02d}", ext, used)
+
+
+def slide_filename(slide_number: int, title: str, ext: str, *, used: Set[str], ascii_only: bool = False) -> str:
+    """Name of a full-slide render: ``004_משואה_750.png``."""
+    return _unique(f"{slide_number:03d}_{sanitize_title(title, ascii_only=ascii_only)}", ext, used)

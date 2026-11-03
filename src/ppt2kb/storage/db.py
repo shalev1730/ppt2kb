@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS slides (
     processed_at TEXT,
     render_error TEXT,
     attachment_sys_id TEXT NOT NULL DEFAULT '',
+    attachment_file_name TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (job_id, number),
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
@@ -123,6 +124,8 @@ class Database:
             self._conn.execute("ALTER TABLE slides ADD COLUMN quality_json TEXT NOT NULL DEFAULT '[]'")
         if "reviewed" not in cols:
             self._conn.execute("ALTER TABLE slides ADD COLUMN reviewed INTEGER NOT NULL DEFAULT 0")
+        if "attachment_file_name" not in cols:  # 1.1.1: stable name of the full-slide attachment
+            self._conn.execute("ALTER TABLE slides ADD COLUMN attachment_file_name TEXT NOT NULL DEFAULT ''")
 
     def close(self) -> None:
         with self._lock:
@@ -250,11 +253,17 @@ class Database:
         rows = self._all("SELECT number, attachment_sys_id FROM slides WHERE job_id = ? AND attachment_sys_id != ''", (job_id,))
         return {r["number"]: r["attachment_sys_id"] for r in rows}
 
+    def slide_attachments(self, job_id: str) -> Dict[int, dict]:
+        """number -> {sys_id, file_name} for the full-slide attachments (either may be empty)."""
+        rows = self._all("SELECT number, attachment_sys_id, attachment_file_name FROM slides WHERE job_id = ?", (job_id,))
+        return {r["number"]: {"sys_id": r["attachment_sys_id"], "file_name": r["attachment_file_name"]} for r in rows}
+
     @staticmethod
     def _slide_row(row: sqlite3.Row) -> SlideData:
         d = dict(row)
         desc = d.pop("description_json")
         d.pop("attachment_sys_id", None)
+        d.pop("attachment_file_name", None)
         d["presentation_id"] = d.pop("job_id")
         d["status"] = SlideStatus(d["status"])
         d["description"] = SlideDescription.model_validate_json(desc).normalised() if desc else None
@@ -282,7 +291,7 @@ class Database:
             updated_at=job["updated_at"],
             source_sha256=job["source_sha256"],
             servicenow=job["servicenow"],
-            image_mode=(job.get("options") or {}).get("image_mode", "embedded"),
+            image_mode=(job.get("options") or {}).get("image_mode", "embedded"),  # jobs from 1.1.0 without a stored mode were embedded
         )
 
     # ---------------------------------------------------------- slide images

@@ -24,7 +24,7 @@ from . import __version__
 from .export import build_article_html, build_standalone_html
 from .llm import QwenClient
 from .pipeline.processor import sha256_file
-from .schemas.deck import JobStatus, SlideStatus
+from .schemas.deck import IMAGE_MODES, attaches_embedded, body_uses_full_slide, JobStatus, SlideStatus
 from .security.upload_validation import UploadValidationError, validate_presentation
 from .servicenow import PublishError, ServiceNowClient, ServiceNowError, publish_job
 
@@ -246,7 +246,7 @@ async def list_jobs(request: Request):
 
 
 @router.post("/jobs", status_code=201)
-async def create_job(request: Request, file: UploadFile = File(...), title: str = Form(""), autostart: bool = Form(True)):
+async def create_job(request: Request, file: UploadFile = File(...), title: str = Form(""), autostart: bool = Form(True), image_mode: str = Form("")):
     ctx = _ctx(request)
     s = ctx.settings
     job_id = uuid.uuid4().hex
@@ -286,6 +286,10 @@ async def create_job(request: Request, file: UploadFile = File(...), title: str 
         logger.exception("Upload failed")
         raise HTTPException(500, "upload failed")
 
+    mode = (image_mode or "").strip() or str(ctx.runtime.get("image_attachment_mode") or "embedded_full")
+    if mode not in IMAGE_MODES:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(400, "image_mode must be one of " + ", ".join(IMAGE_MODES))
     ctx.db.create_job(
         job_id=job_id,
         display_name=result.display_name,
@@ -295,7 +299,7 @@ async def create_job(request: Request, file: UploadFile = File(...), title: str 
         source_kind=result.kind,
         source_size=result.size_bytes,
         macro_enabled=result.macro_enabled,
-        options={"image_mode": str(ctx.runtime.get("image_attachment_mode") or "embedded")},
+        options={"image_mode": mode},
     )
     (s.jobs_dir / job_id).mkdir(parents=True, exist_ok=True)
     if autostart:
@@ -329,12 +333,20 @@ async def update_job(request: Request, job_id: str, body: JobUpdate):
             raise HTTPException(400, "invalid knowledge base id")
         fields["kb_sys_id"] = body.kb_sys_id
     if body.image_mode is not None:
-        if body.image_mode not in ("embedded", "full_slide"):
-            raise HTTPException(400, "image_mode must be embedded or full_slide")
+        if body.image_mode not in IMAGE_MODES:
+            raise HTTPException(400, "image_mode must be one of " + ", ".join(IMAGE_MODES))
         job = ctx.db.get_job(job_id)
+        if ctx.runner.is_active(job_id) or job["status"] == JobStatus.publishing.value:
+            raise HTTPException(409, "the image mode cannot be changed while the presentation is being processed or published")
         opts = dict(job.get("options") or {})
-        opts["image_mode"] = body.image_mode
-        fields["options"] = opts
+        if opts.get("image_mode") != body.image_mode:
+            opts["image_mode"] = body.image_mode
+            fields["options"] = opts
+            sn = dict(job.get("servicenow") or {})
+            if sn.get("sys_id"):
+                # an article already exists with the previous mode: the user must republish explicitly
+                sn["mode_changed"] = True
+                fields["servicenow"] = sn
     ctx.db.update_job(job_id, **fields)
     return _job_view(ctx, ctx.db.get_job(job_id), include_slides=False)
 
@@ -519,6 +531,8 @@ async def export_html(request: Request, job_id: str, embed: bool = True):
     job = _job_or_404(ctx, job_id)
     slides = _slides_with_images(ctx, job_id)
     mode = (job.get("options") or {}).get("image_mode", "embedded")
+    if mode == "embedded" and job["source_kind"] == "pptx" and not ctx.db.get_slide_images(job_id):
+        ctx.runner.extract_images(job_id)
     html = build_standalone_html(title=job["title"] or job["display_name"], slides=slides, job_dir=ctx.settings.jobs_dir / job_id, embed_images=embed, mode=mode)
     name = re.sub(r"[^A-Za-z0-9_.-]+", "_", Path(job["display_name"]).stem) or "presentation"
     return Response(content=html, media_type="text/html; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{name}.html"'})
@@ -540,7 +554,7 @@ async def preview_html(request: Request, job_id: str, slide: Optional[int] = Non
     body = build_article_html(
         title=job["title"] or job["display_name"],
         slides=slides,
-        image_src=(lambda s: f"/api/jobs/{job_id}/slides/{s.number}/image") if mode == "full_slide" else None,
+        image_src=(lambda s: f"/api/jobs/{job_id}/slides/{s.number}/image") if body_uses_full_slide(mode) else None,
         figures_for=(lambda s: [(f"/api/jobs/{job_id}/slides/{s.number}/images/{im['idx']}", f"{s.title or 'slide ' + str(s.number)} - image {im['idx']}") for im in s.images if im.get("selected") and im.get("file_ref")]) if mode == "embedded" else None,
         deck_name=job["display_name"],
         sections_only=slide is not None,
@@ -563,7 +577,7 @@ class PublishRequest(BaseModel):
     kb_sys_id: str = ""
     attach_pptx: Optional[bool] = None
     force_new: bool = False
-    image_mode: Optional[str] = None  # embedded | full_slide (default: the job's mode)
+    image_mode: Optional[str] = None  # one of IMAGE_MODES; default: the mode stored with the presentation
 
 
 @router.post("/jobs/{job_id}/publish", status_code=202)
@@ -580,10 +594,19 @@ async def publish(request: Request, job_id: str, body: PublishRequest):
         raise HTTPException(409, f"{counts['needs_review']} slide(s) need review: edit and accept them (or re-run) before publishing")
     if counts["done"] != job["slide_count"] or job["slide_count"] == 0:
         raise HTTPException(409, "all slides must be processed before publishing")
-    mode = body.image_mode or (job.get("options") or {}).get("image_mode") or "embedded"
-    if mode not in ("embedded", "full_slide"):
-        raise HTTPException(400, "image_mode must be embedded or full_slide")
-    if mode == "embedded" and job["source_kind"] == "pptx" and not ctx.db.get_slide_images(job_id):
+    stored_mode = (job.get("options") or {}).get("image_mode") or "embedded"
+    mode = body.image_mode or stored_mode
+    if mode not in IMAGE_MODES:
+        raise HTTPException(400, "image_mode must be one of " + ", ".join(IMAGE_MODES))
+    sn_state = dict(job.get("servicenow") or {})
+    if sn_state.get("sys_id") and not body.image_mode and sn_state.get("image_mode") and sn_state["image_mode"] != mode and not sn_state.get("mode_changed"):
+        # a retry must never silently switch the mode the article was created with
+        mode = sn_state["image_mode"]
+    if mode != stored_mode:
+        opts = dict(job.get("options") or {})
+        opts["image_mode"] = mode
+        ctx.db.update_job(job_id, options=opts)
+    if attaches_embedded(mode) and job["source_kind"] == "pptx" and not ctx.db.get_slide_images(job_id):
         ctx.runner.extract_images(job_id)  # presentation processed by an older version
     ascii_names = bool(ctx.runtime.get("ascii_filenames"))
     kb = body.kb_sys_id or job["kb_sys_id"] or str(ctx.runtime.get("servicenow_default_kb") or "")
@@ -595,8 +618,9 @@ async def publish(request: Request, job_id: str, body: PublishRequest):
         raise HTTPException(400, str(e))
     attach = body.attach_pptx if body.attach_pptx is not None else bool(ctx.runtime.get("servicenow_attach_pptx"))
 
-    st = dict(job.get("servicenow") or {})
+    st = dict(ctx.db.get_job(job_id).get("servicenow") or {})
     st["progress"] = {"stage": "starting", "done": 0, "total": 0}
+    st.pop("mode_changed", None)
     ctx.db.update_job(job_id, servicenow=st, kb_sys_id=kb, status=JobStatus.publishing)
 
     def progress(stage: str, done: int, total: int):

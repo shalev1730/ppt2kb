@@ -90,12 +90,14 @@ def test_full_flow_60_slides(client, deck60, qwen_ctl, sn_ctl):
     art = data["articles"][0]
     assert art["workflow_state"] == "draft" and art["short_description"] == "VPN gateway training (reviewed)" and art["kb_knowledge_base"] == kb
     atts = [a for a in data["attachments"] if a["table_sys_id"] == art["sys_id"]]
-    images = [a for a in atts if a["file_name"].startswith("slide_")]
+    images = [a for a in atts if a["file_name"].endswith(".png")]
     assert len(images) == 60 and any(a["file_name"] == "vpn_training_60.pptx" for a in atts)
     refs = re.findall(r'<img src="/sys_attachment\.do\?sys_id=([0-9a-f]{32})"', art["text"])
     assert len(refs) == 60
     by_id = {a["sys_id"]: a["file_name"] for a in images}
-    assert [by_id[r] for r in refs] == [f"slide_{i:03d}.png" for i in range(1, 61)]
+    names_in_order = [by_id[r] for r in refs]
+    assert all(n.startswith(f"{i:03d}_") and n.endswith(".png") and "_image_" not in n for i, n in enumerate(names_in_order, start=1))
+    assert names_in_order[1].startswith("002_") and "VPN" in names_in_order[1]  # slide title in the name
     assert f"<!-- ppt2kb:job={job['id']} -->" in art["text"]
     assert "Reviewed text for slide 3" in art["text"] and "<script" not in art["text"]
     # attachment bytes are the real slide images
@@ -108,7 +110,7 @@ def test_full_flow_60_slides(client, deck60, qwen_ctl, sn_ctl):
     job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
     assert job["status"] == "published" and job["servicenow"]["sys_id"] == sn["sys_id"]
     data = sn_ctl.articles()
-    assert len(data["articles"]) == 1 and len([a for a in data["attachments"] if a["file_name"].startswith("slide_")]) == 60
+    assert len(data["articles"]) == 1 and len([a for a in data["attachments"] if a["file_name"].endswith(".png")]) == 60
     print(f"\n[e2e] 60 slides processed and published in {time.time() - t0:.1f}s")
 
 

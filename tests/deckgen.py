@@ -99,10 +99,10 @@ def build_embedded_deck(path: Path, slides: int = 60) -> Path:
     2  'תהליך התחברות' screenshot + logo                    -> 1 image
     3  'ארכיטקטורה' screenshot + grouped diagram (3 icons)  -> 4 images (1 + group of 3)
     4  'משואה 750' cropped screenshot + rotated icon        -> 2 images, cropped & rotated
-    5  text only                                           -> none
+    5  text only, no logo                                  -> no embedded image at all
     6  reused screenshot (same bytes as slide 2) + separator line -> 1 informative + 1 decorative
     7  JPEG photo with an error message                    -> 1 jpeg kept as jpeg
-    8..N text slides, logo on each, screenshot every 5th slide
+    8..N text slides, logo on each, screenshot every 5th slide   (80 images in total, 59 of them the logo)
     """
     from pptx import Presentation
     from pptx.util import Inches, Emu
@@ -152,7 +152,7 @@ def build_embedded_deck(path: Path, slides: int = 60) -> Path:
 
     s = prs.slides.add_slide(title_only)
     title(s, "Business Rules - הסבר", "Before / After\ncurrent.short_description\ngs.info('Message')")
-    add_logo(s)
+    # deliberately no logo: a slide with no embedded image at all
 
     s = prs.slides.add_slide(title_only)
     title(s, "Login screen (reused)")

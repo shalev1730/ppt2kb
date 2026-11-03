@@ -39,8 +39,8 @@ def test_extraction_covers_all_cases(deck_emb, tmp_path):
     per_slide = {}
     for im in imgs:
         per_slide.setdefault(im.slide_number, []).append(im)
-    assert len(imgs) == 81
-    assert [len(per_slide[n]) for n in range(1, 8)] == [1, 2, 5, 3, 1, 3, 2]  # logo on every slide
+    assert len(imgs) == 80
+    assert [len(per_slide.get(n, [])) for n in range(1, 8)] == [1, 2, 5, 3, 0, 3, 2]  # logo on every slide except 5
     # multiple images + group members on slide 3
     s3 = per_slide[3]
     assert sum(1 for i in s3 if i.in_group) == 3 and all(i.group_pictures == 3 for i in s3 if i.in_group)
@@ -60,15 +60,15 @@ def test_extraction_covers_all_cases(deck_emb, tmp_path):
     # reused assets share a sha256 and report the reuse count
     logo_sha = hashlib.sha256(logo_png()).hexdigest()
     logos = [i for i in imgs if i.sha256 == logo_sha]
-    assert len(logos) == 60 and all(i.reuse_count == 60 for i in logos)
+    assert len(logos) == 59 and all(i.reuse_count == 59 for i in logos)
     shot_a = [i for i in imgs if i.slide_number in (2, 6) and i.width == 900]
     assert len(shot_a) == 2 and shot_a[0].sha256 == shot_a[1].sha256 and shot_a[0].reuse_count == 2
     # untransformed JPEG is stored byte-for-byte in its original format
     jpg = next(i for i in per_slide[7] if i.original_ext == "jpeg")
     assert jpg.file_ext == "jpeg" and jpg.file_ref.endswith(".jpg")
     assert hashlib.sha256((tmp_path / "emb" / Path(jpg.file_ref).name).read_bytes()).hexdigest() == jpg.sha256
-    # text-only slide 5 has only the logo; placements are recorded
-    assert per_slide[5][0].sha256 == logo_sha and 0 < per_slide[5][0].rel_width < 0.1
+    # slide 5 has no picture at all; placements of the others are recorded
+    assert 5 not in per_slide and 0 < per_slide[1][0].rel_width < 0.1
 
 
 def test_decorative_filtering_is_conservative(deck_emb, tmp_path):
@@ -95,15 +95,15 @@ def test_decorative_filtering_is_conservative(deck_emb, tmp_path):
 
 # ------------------------------------------------------------- end-to-end
 def test_embedded_mode_end_to_end(client, deck_emb, qwen_ctl, sn_ctl):
-    job = wait_for(client, upload(client, deck_emb, title="ServiceNow Fundamentals")["id"])
+    job = wait_for(client, upload(client, deck_emb, title="ServiceNow Fundamentals", image_mode="embedded")["id"])
     assert job["status"] == "ready" and job["counts"]["done"] == 60
     full = client.get(f"/api/jobs/{job['id']}").json()
-    assert full["image_mode"] == "embedded" and full["images_total"] == 81 and full["images_selected"] == 20
+    assert full["image_mode"] == "embedded" and full["images_total"] == 80 and full["images_selected"] == 20
     s2 = full["slides"][1]
     assert s2["title"] == "תהליך התחברות"  # editable PPTX title preferred over the AI title
     assert [im["selected"] for im in s2["images"]] == [True, False]
     assert s2["images"][0]["url"] and client.get(s2["images"][0]["url"]).headers["content-type"] == "image/png"
-    assert full["slides"][4]["images"][0]["selected"] is False  # slide 5: logo only -> text-only section
+    assert full["slides"][4]["images"] == []  # slide 5: no embedded image -> title + explanation only
     # the full slide image is still available for the reviewer (and was what the model received)
     assert client.get(s2["image_url"]).status_code == 200
     stats = qwen_ctl.stats()
@@ -133,29 +133,35 @@ def test_embedded_mode_end_to_end(client, deck_emb, qwen_ctl, sn_ctl):
     assert client.get(f"/api/jobs/{job['id']}/preview.html?slide=999").status_code == 404
     assert full["source_kind"] == "pptx" and all(k in full["slides"][0] for k in ("quality", "reviewed", "images"))
 
-    # publish: selected embedded images only, meaningful file names, correct references
+    # publish (Embedded Images Only): every original image is attached - identical images once - with
+    # meaningful file names; the body shows the selected images under their slides; no slide renders
     r = client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
     assert r.status_code == 202, r.text
     job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
-    assert job["status"] == "published" and job["servicenow"]["image_mode"] == "embedded" and job["servicenow"]["attachments"] == 20
+    assert job["status"] == "published" and job["servicenow"]["image_mode"] == "embedded" and job["servicenow"]["attachments"] == 21
     data = sn_ctl.articles()
     art = data["articles"][0]
     atts = {a["file_name"]: a["sys_id"] for a in data["attachments"] if a["table_sys_id"] == art["sys_id"]}
-    assert len(atts) == 20 and not any(n.startswith("slide_") for n in atts)
-    assert "004_משואה_750_01.png" in atts and "004_משואה_750_02.png" in atts
-    assert "003_ארכיטקטורה_-_Client_API_Database_01.png" in atts
-    assert "007_Error_handling_-_שגיאת_חיבור_01.jpg" in atts  # JPEG kept as JPEG
-    assert "001_ServiceNow_Fundamentals_יסודות_המערכת_01.png" in atts  # manually included logo
-    assert "002_תהליך_התחברות_01.png" not in atts  # manually excluded
+    assert len(atts) == 21 and not any(n.startswith("slide_") for n in atts)  # 80 images, 21 distinct (logo x59, screenshot x2)
+    assert "004_משואה_750_image_01.png" in atts and "004_משואה_750_image_02.png" in atts
+    assert "003_ארכיטקטורה_-_Client_API_Database_image_01.png" in atts
+    assert "007_Error_handling_-_שגיאת_חיבור_image_01.jpg" in atts  # JPEG kept as JPEG
+    assert "001_ServiceNow_Fundamentals_יסודות_המערכת_image_01.png" in atts  # the logo, attached once under its first slide
+    assert "002_תהליך_התחברות_image_01.png" in atts  # attached (all originals) even though excluded from the body
     sec = _sections(art["text"])
     refs4 = re.findall(r'sys_attachment\.do\?sys_id=([0-9a-f]{32})', sec[4])
-    assert [atts["004_משואה_750_01.png"], atts["004_משואה_750_02.png"]] == refs4
-    assert "<figure" not in sec[2] and "<figure" not in sec[5]
+    assert [atts["004_משואה_750_image_01.png"], atts["004_משואה_750_image_02.png"]] == refs4
+    assert "<figure" not in sec[2] and "<figure" not in sec[5]  # excluded by the reviewer / no image at all
     assert art["text"].count("<figure") == 20 and art["workflow_state"] == "draft"
-    # slide->image->attachment mapping is exposed to the UI
+    # every figure reference resolves to an attachment of this article (no broken images)
+    refs = re.findall(r'sys_attachment\.do\?sys_id=([0-9a-f]{32})', art["text"])
+    assert refs and set(refs) <= set(atts.values())
+    # slide->image->attachment mapping is exposed to the UI; repeated logo shares one attachment
     full = client.get(f"/api/jobs/{job['id']}").json()
     im = full["slides"][3]["images"][0]
-    assert im["file_name"] == "004_משואה_750_01.png" and im["attachment_sys_id"] == atts["004_משואה_750_01.png"]
+    assert im["file_name"] == "004_משואה_750_image_01.png" and im["attachment_sys_id"] == atts["004_משואה_750_image_01.png"]
+    logo_ids = {i["attachment_sys_id"] for s in full["slides"] for i in s["images"] if i["reuse_count"] == 59}
+    assert logo_ids == {atts["001_ServiceNow_Fundamentals_יסודות_המערכת_image_01.png"]}
     # attachment bytes are the extracted (cropped) image, not a slide screenshot
     import httpx
 
@@ -167,11 +173,11 @@ def test_embedded_mode_end_to_end(client, deck_emb, qwen_ctl, sn_ctl):
     client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
     job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
     data = sn_ctl.articles()
-    assert len(data["articles"]) == 1 and len(data["attachments"]) == 20
+    assert len(data["articles"]) == 1 and len(data["attachments"]) == 21
 
 
 def test_embedded_publish_partial_failure_recovery(client, deck_emb, qwen_ctl, sn_ctl):
-    job = wait_for(client, upload(client, deck_emb)["id"])
+    job = wait_for(client, upload(client, deck_emb, image_mode="embedded")["id"])
     sn_ctl.set(fail_attachment_after=7)
     client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
     job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
@@ -180,30 +186,38 @@ def test_embedded_publish_partial_failure_recovery(client, deck_emb, qwen_ctl, s
     client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
     job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
     data = sn_ctl.articles()
-    assert job["status"] == "published" and len(data["articles"]) == 1 and len(data["attachments"]) == 20
+    assert job["status"] == "published" and len(data["articles"]) == 1 and len(data["attachments"]) == 21
+    assert job["image_mode"] == "embedded" and job["servicenow"]["image_mode"] == "embedded"  # the retry kept the mode
     names = [a["file_name"] for a in data["attachments"]]
     assert len(names) == len(set(names))
 
 
 def test_full_slide_mode_still_available(client, deck_emb, sn_ctl):
-    job = wait_for(client, upload(client, deck_emb)["id"])
-    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB, "image_mode": "full_slide"})
+    """Mode 3 (Full Slides Only): 60 slide renders, meaningful names, no embedded images."""
+    job = wait_for(client, upload(client, deck_emb, image_mode="full_slide")["id"])
+    assert job["image_mode"] == "full_slide"
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
     job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
-    names = [a["file_name"] for a in sn_ctl.articles()["attachments"]]
-    assert job["status"] == "published" and len(names) == 60 and all(n.startswith("slide_") for n in names)
+    data = sn_ctl.articles()
+    names = sorted(a["file_name"] for a in data["attachments"])
+    assert job["status"] == "published" and len(names) == 60 and job["servicenow"]["attachments"] == 60
+    assert names[1] == "002_תהליך_התחברות.png" and names[3] == "004_משואה_750.png" and not any("_image_" in n for n in names)
+    sec = _sections(data["articles"][0]["text"])
+    assert len(sec) == 60 and all(sec[n].count("<figure") == 1 for n in sec)  # exactly one full-slide figure per section
+    assert list(sec) == list(range(1, 61))
 
 
 def test_presentation_saved_by_older_version_gets_images_on_publish(client, deck_emb, sn_ctl):
-    """Old jobs have no slide_images rows: extraction runs lazily when publishing in embedded mode."""
-    job = wait_for(client, upload(client, deck_emb)["id"])
+    """Old jobs have no slide_images rows (and 1.1.0 jobs carry mode 'embedded'): extraction runs lazily on publish."""
+    job = wait_for(client, upload(client, deck_emb, image_mode="embedded")["id"])
     ctx = client.app.state.ctx
     ctx.db._exec("DELETE FROM slide_images WHERE job_id = ?", (job["id"],))
     assert client.get(f"/api/jobs/{job['id']}?slides=false").json()["images_total"] == 0
     client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
     job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
-    assert job["status"] == "published" and job["servicenow"]["attachments"] == 20
+    assert job["status"] == "published" and job["servicenow"]["attachments"] == 21
     # explicit re-extraction endpoint also works
-    assert client.post(f"/api/jobs/{job['id']}/images/extract").json()["images"] == 81
+    assert client.post(f"/api/jobs/{job['id']}/images/extract").json()["images"] == 80
 
 
 def test_mode_setting_is_persistent_and_ascii_filenames(app_settings, deck_emb, sn_ctl):
@@ -224,7 +238,7 @@ def test_mode_setting_is_persistent_and_ascii_filenames(app_settings, deck_emb, 
         c.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
         job = wait_for(c, job["id"], statuses=("published", "publish_failed"))
         names = sorted(a["file_name"] for a in sn_ctl.articles()["attachments"])
-        assert job["status"] == "published" and "004_750_01.png" in names and "007_Error_handling_01.jpg" in names and "003_Client_API_Database_01.png" in names
+        assert job["status"] == "published" and "004_750_image_01.png" in names and "007_Error_handling_image_01.jpg" in names and "003_Client_API_Database_image_01.png" in names
         assert all(n.isascii() for n in names)
 
 
@@ -306,3 +320,122 @@ def test_oversized_embedded_picture_is_reported_not_decoded(tmp_path):
     assert len(imgs) == 2
     assert not imgs[0].supported and "ImageTooLarge" in (imgs[0].note or "") and not imgs[0].file_ref
     assert imgs[1].supported and imgs[1].width == 300
+
+
+# ------------------------------------------------------- image output modes (1.1.1)
+def test_embedded_full_mode_is_default_and_attaches_both(client, deck_emb, qwen_ctl, sn_ctl):
+    """Mode 2 (Embedded Images + Full Slides): body shows the 60 full slides only; attachments are the
+    60 slide renders plus every original image (identical ones once); Qwen still gets the full slide."""
+    job = wait_for(client, upload(client, deck_emb, title="Mode 2 deck")["id"])
+    assert job["image_mode"] == "embedded_full" and job["status"] == "ready"  # default without an explicit choice
+    assert qwen_ctl.stats()["images_seen"] == 60  # analysis unchanged by the mode
+    full = client.get(f"/api/jobs/{job['id']}").json()
+    assert full["images_total"] == 80
+    # preview: one full-slide figure per section, no embedded figures in the body
+    prev = _sections(client.get(f"/api/jobs/{job['id']}/preview.html").text)
+    assert len(prev) == 60 and all(prev[n].count("<figure") == 1 and f"slides/{n}/image\"" in prev[n] for n in prev)
+    assert "slides/4/images/" not in prev[4]
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    assert job["status"] == "published" and job["servicenow"]["image_mode"] == "embedded_full"
+    data = sn_ctl.articles()
+    art = data["articles"][0]
+    atts = {a["file_name"]: a["sys_id"] for a in data["attachments"] if a["table_sys_id"] == art["sys_id"]}
+    slides_att = {n for n in atts if "_image_" not in n}
+    images_att = {n for n in atts if "_image_" in n}
+    assert len(slides_att) == 60 and len(images_att) == 21 and job["servicenow"]["attachments"] == 81
+    assert "004_משואה_750.png" in slides_att and "004_משואה_750_image_01.png" in images_att and "004_משואה_750_image_02.png" in images_att
+    assert "005_Business_Rules_-_הסבר.png" in slides_att and not any(n.startswith("005_") for n in images_att)  # slide without embedded images
+    # body: 60 sections in order, each exactly one figure = its own full slide render, nothing else
+    sec = _sections(art["text"])
+    assert list(sec) == list(range(1, 61))
+    refs = re.findall(r'sys_attachment\.do\?sys_id=([0-9a-f]{32})', art["text"])
+    assert len(refs) == 60
+    by_id = {v: k for k, v in atts.items()}
+    assert [by_id[r] for r in refs] == sorted(slides_att, key=lambda n: int(n[:3]))
+    assert all(sec[n].count("<figure") == 1 for n in sec)
+    # the full slide sits directly under the heading, the explanation beneath it
+    assert sec[4].index("<figure") < sec[4].index("<p") and "Open the admin console" in sec[4]
+    # attachment bytes: the full slide is the render, the embedded image is the extracted picture
+    import httpx
+
+    with Image.open(io.BytesIO(httpx.get(sn_ctl.base + f"/sys_attachment.do?sys_id={atts['004_משואה_750_image_01.png']}").content)) as im:
+        assert im.size == (450, 504)
+    with Image.open(io.BytesIO(httpx.get(sn_ctl.base + f"/sys_attachment.do?sys_id={atts['004_משואה_750.png']}").content)) as im:
+        assert im.size[0] > 900  # a rendered slide, not the embedded picture
+    # mapping exposed to the UI: every embedded image has a sys_id that is on the record
+    full = client.get(f"/api/jobs/{job['id']}").json()
+    ids = [i["attachment_sys_id"] for s in full["slides"] for i in s["images"]]
+    assert len(ids) == 80 and all(i in atts.values() for i in ids)
+    # idempotent re-publish
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    assert len(sn_ctl.articles()["attachments"]) == 81
+
+
+def test_embedded_full_partial_failure_recovery(client, deck_emb, sn_ctl):
+    job = wait_for(client, upload(client, deck_emb)["id"])  # default mode 2
+    sn_ctl.set(fail_attachment_after=65)  # fails after the 60 slides and 5 embedded images
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    assert job["status"] == "publish_failed" and len(sn_ctl.articles()["attachments"]) == 65
+    sn_ctl.set(fail_attachment_after=0, reset_counters=True)
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    data = sn_ctl.articles()
+    names = [a["file_name"] for a in data["attachments"]]
+    assert job["status"] == "published" and len(data["articles"]) == 1 and len(names) == 81 and len(set(names)) == 81
+    assert job["image_mode"] == "embedded_full"
+
+
+def test_mode_change_after_publish_requires_explicit_republish(client, deck_emb, sn_ctl):
+    """Changing the mode never touches the article by itself; a retry keeps the mode the article was created with;
+    republishing rewrites the body with the new mode without duplicating anything."""
+    job = wait_for(client, upload(client, deck_emb, image_mode="full_slide")["id"])
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    assert job["status"] == "published" and len(sn_ctl.articles()["attachments"]) == 60
+    # switch to Embedded Images Only
+    r = client.patch(f"/api/jobs/{job['id']}", json={"image_mode": "embedded"}).json()
+    assert r["image_mode"] == "embedded" and r["servicenow"]["mode_changed"] is True
+    assert len(sn_ctl.articles()["attachments"]) == 60  # nothing happened on ServiceNow
+    # explicit republish with the new mode
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    data = sn_ctl.articles()
+    assert job["status"] == "published" and job["servicenow"]["image_mode"] == "embedded" and not job["servicenow"].get("mode_changed")
+    assert len(data["articles"]) == 1 and len(data["attachments"]) == 60 + 21  # old full-slide files are kept, new images added once
+    sec = _sections(data["articles"][0]["text"])
+    assert "<figure" not in sec[5] and sec[4].count("<figure") == 2 and "004_משואה_750.png" not in data["articles"][0]["text"]
+    # a simulated failed retry must not switch modes silently: stored mode stays what the article was published with
+    ctx = client.app.state.ctx
+    j = ctx.db.get_job(job["id"])
+    st = dict(j["servicenow"]); st["image_mode"] = "full_slide"  # pretend the article was created in another mode
+    ctx.db.update_job(job["id"], servicenow=st, status="publish_failed")
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    assert job["servicenow"]["image_mode"] == "full_slide" and job["image_mode"] == "full_slide"
+    # the mode cannot be changed while publishing (409) - checked through the state machine
+    ctx.db.update_job(job["id"], status="publishing")
+    assert client.patch(f"/api/jobs/{job['id']}", json={"image_mode": "embedded"}).status_code == 409
+    ctx.db.update_job(job["id"], status="published")
+
+
+def test_backward_compatibility_with_older_presentations(client, deck_emb, sn_ctl):
+    """A job stored by 1.1.0 (no attachment_file_name column value, mode 'embedded' or no mode at all) and an
+    article already carrying slide_NNN.png attachments from 1.0 keep working and keep their names."""
+    job = wait_for(client, upload(client, deck_emb, image_mode="full_slide")["id"])
+    ctx = client.app.state.ctx
+    # simulate a 1.0.x article: attachments named slide_NNN.png already on the record, no stored names
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    ctx.db._exec("UPDATE slides SET attachment_file_name = '' WHERE job_id = ?", (job["id"],))
+    sn_ctl.rename_attachments(job["servicenow"]["sys_id"], lambda n: f"slide_{int(n[:3]):03d}.png" if n[:3].isdigit() else n)
+    client.post(f"/api/jobs/{job['id']}/publish", json={"kb_sys_id": KB})
+    job = wait_for(client, job["id"], statuses=("published", "publish_failed"))
+    data = sn_ctl.articles()
+    names = sorted(a["file_name"] for a in data["attachments"])
+    assert job["status"] == "published" and len(names) == 60 and names[0] == "slide_001.png"  # reused, not re-uploaded under new names
+    # a job without any stored mode (pre-1.1 options) is treated as 'embedded'
+    ctx.db.update_job(job["id"], options={})
+    assert client.get(f"/api/jobs/{job['id']}?slides=false").json()["image_mode"] == "embedded"

@@ -15,6 +15,7 @@ import threading
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from .schemas.deck import IMAGE_MODES
 from .config import Settings, host_of
 from .llm.qwen import QwenConfig
 from .logging_utils import register_secret
@@ -139,7 +140,7 @@ class RuntimeConfig:
                     logger.warning("Rejected %s: host %s not in PPT2KB_ALLOWED_OUTBOUND_HOSTS", key, h)
                     rejected.append(key)
                     continue
-            if key == "image_attachment_mode" and str(val) not in ("embedded", "full_slide"):
+            if key == "image_attachment_mode" and str(val) not in IMAGE_MODES:
                 rejected.append(key)
                 continue
             if key.endswith("_json") and val:

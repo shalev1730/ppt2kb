@@ -15,6 +15,28 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+# Image output modes (1.1.1). The mode only decides which images are attached
+# to the ServiceNow article and which are shown in its body; Qwen always
+# analyses the full slide render.
+#   embedded      - body: selected embedded images; attachments: all embedded images
+#   embedded_full - body: full slide render;         attachments: full slides + all embedded images (default)
+#   full_slide    - body: full slide render;         attachments: full slides only
+IMAGE_MODES = ("embedded", "embedded_full", "full_slide")
+DEFAULT_IMAGE_MODE = "embedded_full"
+
+
+def body_uses_full_slide(mode: str) -> bool:
+    return mode in ("embedded_full", "full_slide")
+
+
+def attaches_embedded(mode: str) -> bool:
+    return mode in ("embedded", "embedded_full")
+
+
+def attaches_full_slides(mode: str) -> bool:
+    return mode in ("embedded_full", "full_slide")
+
+
 class SlideStatus(str, Enum):
     pending = "pending"
     processing = "processing"
@@ -158,5 +180,5 @@ class DeckData(BaseModel):
     updated_at: str = ""
     source_sha256: str = ""
     servicenow: dict = Field(default_factory=dict)
-    image_mode: str = "embedded"  # embedded | full_slide
+    image_mode: str = "embedded_full"  # see IMAGE_MODES
     schema_version: int = 3

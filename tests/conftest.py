@@ -83,8 +83,12 @@ def sn_ctl(mock_sn):
     def articles():
         return httpx.get(mock_sn.base + "/_mock/articles", timeout=5).json()
 
+    def rename_attachments(table_sys_id, fn):
+        names = {a["file_name"]: fn(a["file_name"]) for a in articles()["attachments"] if a["table_sys_id"] == table_sys_id}
+        return httpx.post(mock_sn.base + "/_mock/rename_attachments", json={"table_sys_id": table_sys_id, "names": names}, timeout=5).json()
+
     set_(clear=True, fail_attachment_after=0, delay_ms=0)
-    yield type("Ctl", (), {"set": staticmethod(set_), "articles": staticmethod(articles), "base": mock_sn.base})
+    yield type("Ctl", (), {"set": staticmethod(set_), "articles": staticmethod(articles), "rename_attachments": staticmethod(rename_attachments), "base": mock_sn.base})
     set_(fail_attachment_after=0, delay_ms=0)
 
 

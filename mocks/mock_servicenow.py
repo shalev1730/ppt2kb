@@ -235,6 +235,20 @@ async def mock_config(request: Request):
     return {"ok": True, "cfg": _cfg}
 
 
+@app.post("/_mock/rename_attachments")
+async def mock_rename(request: Request):
+    """Test helper: rename the attachments of a record (simulates files uploaded by an older version)."""
+    body = await request.json()
+    mapping = body.get("names") or {}
+    n = 0
+    with _lock:
+        for a in ATTACHMENTS.values():
+            if a["table_sys_id"] == body.get("table_sys_id") and a["file_name"] in mapping:
+                a["file_name"] = mapping[a["file_name"]]
+                n += 1
+    return {"ok": True, "renamed": n}
+
+
 @app.get("/_mock/articles")
 async def mock_articles():
     return {"articles": list(ARTICLES.values()), "attachments": [{k: v for k, v in a.items() if k != "data"} for a in ATTACHMENTS.values()]}

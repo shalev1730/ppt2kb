@@ -83,8 +83,12 @@ def _heading_for(s: SlideData) -> str:
     return s.title or (s.description.title if s.description else "") or f"Slide {s.number}"
 
 
-def _slide_section(s: SlideData, figures: List[Tuple[str, str]], heading_level: int = 2) -> str:
-    """One article section: heading, explanation, then the figures (src, alt)."""
+def _slide_section(s: SlideData, figures: List[Tuple[str, str]], heading_level: int = 2, figures_first: bool = False) -> str:
+    """One article section: heading, then explanation and figures (src, alt).
+
+    ``figures_first`` puts the figures directly under the heading and the explanation
+    beneath them - used for the full slide render (the explanation describes the slide
+    shown above it); embedded images follow the explanation they illustrate."""
     content = s.edited_content if s.edited_content is not None else s.content
     title = _heading_for(s)
     # drop a first line that merely repeats the heading
@@ -95,12 +99,13 @@ def _slide_section(s: SlideData, figures: List[Tuple[str, str]], heading_level: 
     h = f"h{heading_level}"
     parts = [f'<section class="ppt2kb-slide" data-slide="{s.number}" dir="{d}">']
     parts.append(f'<{h} dir="{detect_direction(title)}">{s.number}. {html.escape(title)}</{h}>')
-    parts.append(text_to_html(content or ""))
-    for src, alt in figures:
-        parts.append(
-            f'<figure class="ppt2kb-figure"><img src="{html.escape(src, quote=True)}" alt="{html.escape(alt, quote=True)}" '
-            f'style="max-width:100%;height:auto;border:1px solid #ccc"></figure>'
-        )
+    figs = [
+        f'<figure class="ppt2kb-figure"><img src="{html.escape(src, quote=True)}" alt="{html.escape(alt, quote=True)}" '
+        f'style="max-width:100%;height:auto;border:1px solid #ccc"></figure>'
+        for src, alt in figures
+    ]
+    body = text_to_html(content or "")
+    parts.extend(figs + [body] if figures_first else [body] + figs)
     parts.append("</section>")
     return "\n".join(p for p in parts if p)
 
@@ -133,14 +138,16 @@ def build_article_html(
         parts.append(f'<details class="ppt2kb-toc"><summary>Contents</summary><ol dir="{d}">{toc}</ol></details>')
     for s in slides:
         figs: List[Tuple[str, str]] = []
+        first = False
         if figures_for:
             figs = list(figures_for(s) or [])
         if not figs and image_src:
             src = image_src(s)
             if src:
                 figs = [(src, f"{_heading_for(s)} - slide {s.number}")]
+                first = True  # the full slide render goes above its explanation
         parts.append(f'<a id="ppt2kb-slide-{s.number}"></a>')
-        parts.append(_slide_section(s, figs))
+        parts.append(_slide_section(s, figs, figures_first=first))
     parts.append("</div>")
     return "\n".join(parts)
 
@@ -175,7 +182,9 @@ def build_standalone_html(*, title: str, slides: Iterable[SlideData], job_dir: O
                 out.append((im["file_ref"], alt))
         return out
 
-    body = build_article_html(title=title, slides=slides, image_src=src if mode == "full_slide" else None, figures_for=figs if mode == "embedded" else None)
+    from ..schemas.deck import body_uses_full_slide
+
+    body = build_article_html(title=title, slides=slides, image_src=src if body_uses_full_slide(mode) else None, figures_for=figs if mode == "embedded" else None)
     d = detect_direction(title)
     return f"""<!DOCTYPE html>
 <html lang="{'he' if d == 'rtl' else 'en'}" dir="{d}">
