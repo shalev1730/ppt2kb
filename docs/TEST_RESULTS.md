@@ -189,8 +189,11 @@ tests/test_units.py::test_degenerate_answer_triggers_penalised_retry PASSED
   LibreOffice 7.4.7 present, 68 Hebrew font faces; uploaded the 60-slide deck
   through the API from inside the container → `ready 60/60`; published to the
   mock ServiceNow → `KB0001001`, 1 article, 60 attachments; slide image served
-  as PNG. Repeated after the final rebuild with identical results
-  (`container-test.log`).
+  as PNG. Repeated for every release: the 1.1.1 image (`ppt2kb:1.1.1`, same
+  256 Debian packages) processed the 60-slide embedded deck in default mode
+  `embedded_full` → 80 pictures extracted, published `KB0001001` with 81
+  attachments (60 renders + 21 distinct originals), 60 body figures, re-publish
+  idempotent (`container-test111.log`).
 * Not executed: `docker load` / `docker compose up` themselves (no daemon).
   The tar is in the standard docker-archive format (manifest.json +
   repositories + layers) that `docker load` and `podman load` consume.
@@ -202,22 +205,22 @@ checksum-verified; LibreOffice MSI GPG signature verified). Because the build
 environment is Linux, the installation test used Wine 9.0 (WoW64 prefix) with
 a virtual display — a close but not identical substitute for Windows 11:
 
-| Step | Result (v1.1.0 installer, 2026-11-02) |
+| Step | Result (v1.1.1 installer, 2026-11-04) |
 |---|---|
-| `PPT2KB-Setup.exe /S /D=C:\PPT2KB` on a fresh prefix | 28 s; 4,747 files; 8 shortcuts; Add/Remove Programs entry `PPT2KB 1.1.0` |
+| `PPT2KB-Setup.exe /S /D=C:\PPT2KB` on a fresh prefix | 21 s; 4,748 files; 8 shortcuts; Add/Remove Programs entry `PPT2KB 1.1.1` |
 | Bundled mock services started with the embedded Python (`tools\start-mock-services.cmd` equivalent) | up after 4 s |
-| `PPT2KB.exe` (desktop launcher) | returns in 0.15 s, server healthy after 5 s (`version 1.1.0`, `libreoffice: true`) |
+| `PPT2KB.exe` (desktop launcher) | returns in 0.14 s, server healthy after 5 s (`version 1.1.1`, `libreoffice: true`) |
 | Second `PPT2KB.exe` while running | detects the running instance (no second server) |
-| Upload the 60-slide *embedded-images* test deck | `ready 60/60` after 17 s; image mode `embedded`; **81 embedded pictures extracted, 20 auto-selected, 0 slides needing review** (with the deterministic mock); slide 4: cropped 450×504 PNG, 160×160 PNG rotated 90°, 120×120 repeated logo auto-excluded |
-| Manual include/exclude (`PATCH …/images/1`) and section preview (`preview.html?slide=4`) | toggles persisted; preview shows `<h2 dir="rtl">4. משואה 750</h2>` with 2 figures |
+| Upload the 60-slide *embedded-images* test deck | `ready 60/60` after 14 s; image output mode **`embedded_full` by default**; 80 embedded pictures extracted, 20 auto-selected, 0 slides needing review (deterministic mock); slide 4: cropped 450×504 PNG, 160×160 PNG rotated 90°, 120×120 repeated logo |
+| Manual include/exclude (`PATCH …/images/1`) and section preview (`preview.html?slide=4`) | toggles persisted; preview shows `<h2 dir="rtl">4. משואה 750</h2>` with the one full-slide figure of mode 2 |
 | UI secret (`PUT /api/config`) | stored as `dpapi:` blob (DPAPI), not in clear text |
-| Create draft | `published KB0001001`, 20 attachments on the mock with names such as `002_תהליך_התחברות_01.png`, `003_ארכיטקטורה_-_Client_API_Database_01.png`, `004_משואה_750_01.png`; re-publish → still 1 article / 20 attachments |
-| Data folder | 60 slide renders + 81 extracted image files under `%LOCALAPPDATA%\PPT2KB\data` |
+| Create draft | `published KB0001001`, **81 attachments**: 60 slide renders (`003_ארכיטקטורה_-_Client_API_Database.png`) + 21 distinct originals (`002_תהליך_התחברות_image_01.png`); body: 60 figures (one full slide per section); re-publish → still 1 article / 81 attachments |
+| Data folder | 60 slide renders + 80 extracted image files under `%LOCALAPPDATA%\PPT2KB\data` |
 | `PPT2KB.exe --stop` | 1.8 s, server gone |
 | `uninstall.exe /S` | finished in 7 s: shortcuts and registry key removed, data folder kept (by design); `config` kept; `python` folder remained only because the test's mock processes were still running from it |
 
-The 1.0.1 run of the same script (60-slide VPN deck, full-slide mode, 60
-attachments) is kept in the build log for comparison.
+The 1.1.0 run (Embedded Images Only, 20 attachments) and the 1.0.1 run (60-slide
+VPN deck, full-slide mode) of the same script are kept in the build logs.
 
 Earlier iterations of this test found and fixed: launcher `swprintf` wide-string
 bug (server never started, blocking dialog); desktop defaults overriding the
