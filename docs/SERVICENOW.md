@@ -55,7 +55,9 @@ automatically.
 * **Images** — three modes (`image_mode` per presentation, chosen at upload,
   default from `PPT2KB_IMAGE_ATTACHMENT_MODE` = `embedded_full`):
   * `embedded` (Embedded Images Only): every picture embedded in the PPTX is
-    attached (identical pictures — same SHA-256 — once), in its original format (PNG stays PNG, JPEG stays JPEG;
+    attached (identical pictures — same SHA-256 — once; with *Exclude slide
+    backgrounds* — the default since 1.1.2 — background and decoration pictures
+    are skipped entirely), in its original format (PNG stays PNG, JPEG stays JPEG;
     cropped/rotated pictures are stored as the visible portion, as PNG). File
     names are meaningful and unique:
     `<slide 3 digits>_<sanitised slide title>_image_<image 2 digits>.<png|jpg>`, e.g.

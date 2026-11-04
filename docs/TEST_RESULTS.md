@@ -6,15 +6,21 @@ Environment: Ubuntu 24.04 (x86_64), Python 3.13.18, LibreOffice 24.2.7.2,
 pypdfium2 5.x, Pillow 13.0.0, Playwright + Chromium (UI tests) — the application
 was installed with `pip install -e .`, mock Qwen and mock ServiceNow services
 were started by the test fixtures on random localhost ports. Date of the final
-v1.1.1 run: 2026-11-03.
+v1.1.2 run: 2026-11-04.
 
 Command: `python -m pytest tests -v --durations=8`
 
-Result: **78 passed, 0 failed, 0 skipped in 187.5 s** (72 tests in 1.1.0 plus 6 new
-tests for v1.1.1; `tests/test_ui.py` needs Playwright and is skipped where it is
-not installed).
+Result: **85 passed, 0 failed, 0 skipped in 208.2 s** (78 tests in 1.1.1 plus 7 new
+tests for v1.1.2 in `tests/test_backgrounds.py`).
 
 ```
+tests/test_backgrounds.py::test_background_detection_is_structural_first_and_conservative PASSED
+tests/test_backgrounds.py::test_embedded_only_mode_excludes_backgrounds PASSED
+tests/test_backgrounds.py::test_embedded_full_mode_keeps_full_slides_and_excludes_backgrounds PASSED
+tests/test_backgrounds.py::test_full_slide_mode_is_unchanged_by_the_option PASSED
+tests/test_backgrounds.py::test_include_backgrounds_keeps_everything PASSED
+tests/test_backgrounds.py::test_option_persists_and_retry_keeps_it_and_change_requires_republish PASSED
+tests/test_backgrounds.py::test_backward_compatibility_old_presentations_keep_their_images PASSED
 tests/test_e2e.py::test_full_flow_60_slides PASSED
 tests/test_e2e.py::test_partial_failure_and_single_slide_retry PASSED
 tests/test_e2e.py::test_transient_errors_are_retried PASSED
@@ -93,8 +99,21 @@ tests/test_units.py::test_desktop_defaults_do_not_override_env_file PASSED
 tests/test_units.py::test_parse_description_salvages_truncated_repetition_loop PASSED
 tests/test_units.py::test_parse_description_collapses_blank_runs_in_valid_json PASSED
 tests/test_units.py::test_degenerate_answer_triggers_penalised_retry PASSED
-======================== 78 passed in 187.47s (0:03:07) ========================
+======================== 85 passed in 208.16s (0:03:28) ========================
 ```
+
+### v1.1.2 mapping (exclude slide backgrounds)
+
+| # | Requirement | Test | Evidence |
+|---|---|---|---|
+| 1 | True image background + one content image | `test_background_detection_is_structural_first_and_conservative`, `test_embedded_only_mode_excludes_backgrounds` | slide 1: background fill flagged `slide_background`, master logo `layout_picture`, the screenshot kept and the only figure of the section |
+| 2 | Repeated background across slides | same | the theme picture on slides 2–5 (full-bleed, back-most, 2–3 shapes over it, reuse 4) is excluded; no `002_/004_` attachments |
+| 3 | Full-slide mode unchanged | `test_full_slide_mode_is_unchanged_by_the_option` | 8 renders and 8 figures with the option on and off |
+| 4 | Embedded Images Only | `test_embedded_only_mode_excludes_backgrounds` | 21 extracted, 14 backgrounds, 7 content images attached/shown; background-only slides get title + explanation |
+| 5 | Embedded Images + Full Slides | `test_embedded_full_mode_keeps_full_slides_and_excludes_backgrounds` | 8 renders + 7 content images = 15 attachments, one full-slide figure per section |
+| 6 | Backward compatibility | `test_backward_compatibility_old_presentations_keep_their_images`, `test_include_backgrounds_keeps_everything` | 1.1.1-style job (no option, unflagged rows) publishes all 11 distinct originals; re-extraction classifies 14 backgrounds; option off reproduces 1.1.1 output |
+| — | Persistence, retry, explicit republish, server default | `test_option_persists_and_retry_keeps_it_and_change_requires_republish` | retry after 3 uploads completes to 7 with the option kept; PATCH flags `mode_changed`, republish adds the 4 background assets without duplicates; `PUT /api/config exclude_backgrounds` applies to new uploads |
+| — | Qwen unaffected | mode tests | `images_seen == 8` whatever the option; the prompt rule is additive |
 
 ### v1.1.1 regression mapping (three image output modes, Dark Mode)
 

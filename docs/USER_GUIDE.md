@@ -29,7 +29,10 @@ presentation (it is stored with the presentation and shown on its page):
 | **Embedded Images + Full Slides** (תמונות ושקופיות) — default | the complete slide + the explanation beneath it | the complete slides and the original images |
 | **Full Slides Only** (שקופיות בלבד) | the complete slide + the explanation beneath it | the complete slides only |
 
-Whatever the mode, Qwen analyses the complete slide. Then **Upload and process**. The file is validated (type,
+Whatever the mode, Qwen analyses the complete slide. Leave **Exclude slide
+backgrounds** ticked (the default) so that background pictures, theme/master
+graphics and repeated decoration are not treated as presentation images;
+screenshots, diagrams and photos are kept. Then **Upload and process**. The file is validated (type,
 size, ZIP structure), converted to images in an isolated process and each
 slide is sent to Qwen. You are taken to the presentation page, which refreshes
 itself while processing runs (status *Converting…*, *Analysing slides…*).
@@ -54,8 +57,11 @@ The presentation page shows:
     is re-processed. In the other modes all original images are attached and
     the slide render is what the body shows, so there is nothing to tick. Pictures the application cannot extract (vector formats)
     are listed as unsupported, never silently replaced by a screenshot.
-    After publishing, each image shows its attachment file name
-    (`004_משואה_750_image_01.png ✔`);
+    Images classified as background/decoration carry a *Background — excluded*
+    badge with the reason (slide background picture, picture on the layout/
+    master, full-bleed picture behind the content, repeated branding); they are
+    neither attached nor shown. After publishing, each attached image shows its
+    file name (`004_משואה_750_image_01.png ✔`);
   * the **Heading** (taken from the slide title in the PPTX when there is one)
     and the **Description** text. Edit the text freely and press **Save** (the
     card is marked *edited*); **Revert to AI text** restores the generated
@@ -102,8 +108,8 @@ images are uploaded, under the same names — no duplicates. Re-creating after
 further edits or image changes updates the same draft. The application never
 touches Knowledge articles it did not create.
 
-Changing the **Image output mode** after an article exists does nothing by
-itself: the page shows a notice and the button becomes **Republish with the
+Changing the **Image output mode** or the **Exclude slide backgrounds** option
+after an article exists does nothing by itself: the page shows a notice and the button becomes **Republish with the
 new mode**; only that explicit action rewrites the article body and attaches
 the images of the new mode (attachments of the previous mode stay on the
 article until you remove them in ServiceNow). A retry of a failed publish

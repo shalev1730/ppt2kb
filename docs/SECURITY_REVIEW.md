@@ -89,6 +89,12 @@ per-browser `localStorage` value applied by a same-origin script
 server; attachment names for slide renders go through the same `sanitize_title`
 path as embedded images. No new endpoints.
 
+**1.1.2**: background detection reads layout/master parts of the already
+validated package through the same `python-pptx` API and the same raster
+decoding path (pixel guard included); the option is a validated boolean on the
+upload form, the job PATCH and the settings; two columns are added to
+`slide_images` by migration. No new endpoints, dependencies or outbound hosts.
+
 ## 5. Data handling
 
 * Uploaded presentations, rendered slide images, extracted text and generated

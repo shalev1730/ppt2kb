@@ -47,7 +47,7 @@ ARG BUILD_PROXY=
 ARG BUILD_CA_FILE=
 LABEL org.opencontainers.image.title="ppt2kb" \
       org.opencontainers.image.description="Secure on-premise PowerPoint to ServiceNow Knowledge converter" \
-      org.opencontainers.image.version="1.1.1" \
+      org.opencontainers.image.version="1.1.2" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.source="internal"
 

@@ -111,6 +111,7 @@ network layer (transparent proxy) or allow direct access to the two hosts.
 | Variable | Default | Notes |
 |---|---|---|
 | `PPT2KB_IMAGE_ATTACHMENT_MODE` | `embedded_full` | Default **Image output mode** for new presentations (each presentation chooses its own at upload; see the table below). `embedded` = Embedded Images Only, `embedded_full` = Embedded Images + Full Slides, `full_slide` = Full Slides Only. Settable in the UI (persisted). |
+| `PPT2KB_EXCLUDE_BACKGROUNDS` | `true` | Default of the per-presentation **Exclude slide backgrounds** option (chosen at upload, stored with the presentation, changeable in the UI). When on, images classified as background/decoration are left out of the extracted embedded-image set: not attached, not shown in the article body. The full slide render is unaffected (still attached in the full-slide modes, always sent to Qwen). Presentations processed by 1.1.1 or earlier have no stored value and keep including everything. |
 | `PPT2KB_ASCII_FILENAMES` | `false` | `true` drops Hebrew (and any non-ASCII) characters from attachment file names (`004_750_01.png` instead of `004_משואה_750_01.png`) for instances or proxies that reject Unicode file names. |
 | `PPT2KB_QWEN_QUALITY_RETRIES` | `1` | How many times an answer that fails the quality validation (visual-only description, copied slide text, truncated/looping JSON, empty, duplicate of the previous slide) is re-requested with a corrective hint before the slide is marked **needs review**. 0 disables the retry (the validation still runs). |
 
@@ -133,6 +134,24 @@ shapes, SmartArt and text boxes are **not** extracted: they are listed as
 *unsupported* in the UI so the reviewer can decide; nothing is faked. Legacy
 `.ppt` files have no embedded-image extraction (the file is not a ZIP
 container); for them use `full_slide` mode.
+
+**Background detection (1.1.2)** uses the presentation structure first and
+heuristics second. An image is classified as background/decoration — with the
+reason stored and shown in the UI — when it is:
+
+* the picture fill of the slide background (`slide_background`);
+* a background picture or a picture inherited from the slide layout or master
+  (`master_background`, `layout_picture`);
+* a full-bleed picture (≥ 85 % of the slide) that is the back-most shape with
+  other content drawn over it (`full_bleed`), or a large picture (≥ 50 %)
+  repeated on three or more slides (`repeated_large`);
+* strong decorative evidence: the same small asset repeated on many slides
+  (logos, watermarks), a line/strip shape, or a near-uniform fill (`decorative`).
+
+A picture is never classified as background only because it is large, small or
+low-detail: a screenshot, diagram, photo, chart or scanned figure placed as the
+slide's content — even one that fills the slide with nothing drawn over it — is
+kept. Backgrounds are never auto-selected for the article body.
 
 Decorative filtering is deliberately conservative: an image is excluded
 automatically only when strong signals agree (the same picture repeated on 3+

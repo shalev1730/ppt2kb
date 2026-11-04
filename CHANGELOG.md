@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.1.2 (2026-11-04) — exclude slide backgrounds
+
+* New per-presentation option **Exclude slide backgrounds** (upload checkbox, default on; server default
+  `PPT2KB_EXCLUDE_BACKGROUNDS`; shown and changeable on the presentation page). Images classified as
+  background/decoration are left out of the extracted embedded-image set — not attached, not shown in
+  the article body — in *Embedded Images Only* and *Embedded Images + Full Slides*; *Full Slides Only*
+  and the full-slide renders are unaffected, and Qwen still receives the full slide for every slide.
+* Detection is structural first, heuristic second, and conservative: slide background picture fills,
+  background pictures and pictures inherited from the layout/master, full-bleed pictures that are the
+  back-most shape with content drawn over them, large pictures repeated on 3+ slides, and strong
+  decoration (repeated branding, strips, uniform fills). Screenshots, diagrams, photos and charts are
+  kept even when large. Each image carries `is_background_candidate`, `is_master_background`,
+  `is_decorative` and a `background_reason` (visible in the UI and the API).
+* Changing the option after an article exists requires the explicit republish, like a mode change; a
+  retry keeps the option the article was created with. Presentations from 1.1.1 or earlier have no
+  stored value and keep including everything (re-extract to classify them, then opt in).
+* Prompt: one added rule — treat backgrounds, watermarks and layout ornaments as invisible and build the
+  explanation from the informative content.
+* Tests: 7 new on a dedicated background deck (85 total): true background + content image, repeated
+  background, full-slide mode unchanged, both embedded modes, include mode, persistence/retry/republish,
+  backward compatibility.
+
 ## 1.1.1 (2026-11-03) — three image output modes, Dark Mode
 
 * **Image output mode per presentation**, chosen on the upload page before processing and stored

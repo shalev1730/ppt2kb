@@ -11,7 +11,7 @@
 
 Unicode True
 !define PRODUCT "PPT2KB"
-!define VERSION "1.1.1"
+!define VERSION "1.1.2"
 !define PUBLISHER "ppt2kb project (MIT)"
 !define REGKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\PPT2KB"
 

@@ -27,14 +27,14 @@ code base (Docker image, or a standalone Linux service).
                 └─► ServiceNow Table + Attachment API (internal)      kb_knowledge draft + embedded images (or full slides)
 ```
 
-## Release packages (v1.1.1)
+## Release packages (v1.1.2)
 
 | Package | What it is | Guide |
 |---|---|---|
 | `PPT2KB-Setup.exe` | Self-contained Windows 10/11 x64 installer: embedded Python, the application, LibreOffice headless + fonts. Install → desktop shortcut → browser UI on 127.0.0.1. No Python/Docker/LibreOffice needed on the PC. | [docs/INSTALL_WINDOWS.md](docs/INSTALL_WINDOWS.md) |
-| `ppt2kb-web-offline.tar` | Pre-built OCI/Docker image (`ppt2kb:1.1.1`) for the internal container host: `docker load`, configure `.env`, `docker compose up -d`. | [docs/DEPLOY_DOCKER_OFFLINE.md](docs/DEPLOY_DOCKER_OFFLINE.md) |
-| `ppt2kb-1.1.1-offline-py3.1x-x86_64.tar.gz` | Linux standalone service (no Docker) with all wheels, systemd unit and installer. | [docs/INSTALL_STANDALONE.md](docs/INSTALL_STANDALONE.md) |
-| `ppt2kb-1.1.1-src.tar.gz` | Complete source, tests, build scripts, SBOM. Rebuild any package with [docs/BUILD_REPRODUCIBLE.md](docs/BUILD_REPRODUCIBLE.md). | |
+| `ppt2kb-web-offline.tar` | Pre-built OCI/Docker image (`ppt2kb:1.1.2`) for the internal container host: `docker load`, configure `.env`, `docker compose up -d`. | [docs/DEPLOY_DOCKER_OFFLINE.md](docs/DEPLOY_DOCKER_OFFLINE.md) |
+| `ppt2kb-1.1.2-offline-py3.1x-x86_64.tar.gz` | Linux standalone service (no Docker) with all wheels, systemd unit and installer. | [docs/INSTALL_STANDALONE.md](docs/INSTALL_STANDALONE.md) |
+| `ppt2kb-1.1.2-src.tar.gz` | Complete source, tests, build scripts, SBOM. Rebuild any package with [docs/BUILD_REPRODUCIBLE.md](docs/BUILD_REPRODUCIBLE.md). | |
 
 All packages are built from this code base and provide the same UI and
 functionality. `SHA256SUMS` accompanies every delivery.

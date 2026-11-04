@@ -22,8 +22,8 @@ sudo apt-get install -y buildah skopeo
 cd ppt2kb
 buildah --storage-driver vfs bud --isolation chroot --network host \
   --build-arg APT_MIRROR=https://deb.debian.org/debian \
-  -f deploy/docker/Dockerfile -t ppt2kb:1.1.1 .
-buildah --storage-driver vfs push ppt2kb:1.1.1 docker-archive:dist/ppt2kb-web-offline.tar:ppt2kb:1.1.1
+  -f deploy/docker/Dockerfile -t ppt2kb:1.1.2 .
+buildah --storage-driver vfs push ppt2kb:1.1.2 docker-archive:dist/ppt2kb-web-offline.tar:ppt2kb:1.1.2
 skopeo inspect docker-archive:dist/ppt2kb-web-offline.tar | jq '.Labels, .Layers'
 sha256sum dist/ppt2kb-web-offline.tar
 ```
@@ -33,7 +33,7 @@ Behind an egress proxy that re-terminates TLS, add
 (used only during the build; nothing of it stays in the image). Internal
 mirrors: `--build-arg APT_MIRROR=https://mirror.internal/debian --build-arg PIP_INDEX_URL=https://nexus.internal/repository/pypi/simple`.
 
-With Docker: `docker build -f deploy/docker/Dockerfile -t ppt2kb:1.1.1 . && docker save ppt2kb:1.1.1 -o dist/ppt2kb-web-offline.tar`.
+With Docker: `docker build -f deploy/docker/Dockerfile -t ppt2kb:1.1.2 . && docker save ppt2kb:1.1.2 -o dist/ppt2kb-web-offline.tar`.
 
 Determinism: the image is not bit-for-bit reproducible (apt package versions
 move with Debian security updates, timestamps differ), but its *content* is
@@ -44,11 +44,11 @@ A rebuild should be compared against those lists.
 Functional check of a rebuilt image (no Docker daemon needed):
 
 ```bash
-ctr=$(buildah --storage-driver vfs from ppt2kb:1.1.1)
+ctr=$(buildah --storage-driver vfs from ppt2kb:1.1.2)
 buildah --storage-driver vfs run --isolation chroot --user 10001:10001 $ctr -- sh -c 'id; soffice --version; python -c "import ppt2kb;print(ppt2kb.__version__)"'
 ```
 
-or with Docker: `docker run --rm ppt2kb:1.1.1 soffice --version`. The full
+or with Docker: `docker run --rm ppt2kb:1.1.2 soffice --version`. The full
 in-container acceptance run used for the release is described in
 `docs/TEST_RESULTS.md`.
 
@@ -94,6 +94,6 @@ required: `signtool sign /fd SHA256 /tr <timestamp-url> /td SHA256 /a PPT2KB-Set
 
 ## 3. Source archive
 
-`ppt2kb-1.1.1-src.tar.gz` contains the complete repository (code, tests,
+`ppt2kb-1.1.2-src.tar.gz` contains the complete repository (code, tests,
 deployment files, docs, SBOM). `python -m pytest` runs the 57 automated tests
 (needs LibreOffice on the host).
