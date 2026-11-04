@@ -164,6 +164,10 @@ input[type=text], input[type=url], input[type=password], input[type=number], inp
 :root[data-theme="dark"] .pill { background: var(--elevated); }
 :root[data-theme="dark"] a { color: #7fb0ff; }
 :root[data-theme="dark"] .topbar nav a.active { border-bottom-color: #7fb0ff; }
+.thumb.background { border-style: dashed; }
+.thumb.background img { opacity: 0.45; }
+.thumb-bg { font-size: 0.78rem; color: var(--warn); overflow-wrap: anywhere; }
+.small-help { font-size: 0.85rem; margin-top: -0.2rem; }
 /* the server-rendered article preview inside the dialog */
 :root[data-theme="dark"] #preview-dialog .ppt2kb-article { color: var(--text); }
 :root[data-theme="dark"] #preview-dialog .ppt2kb-article img { background: #fff; border-radius: 4px; }

@@ -132,6 +132,7 @@
       $("#upload-limits", view).textContent = t("upload.limits", { mb: cfg.max_upload_mb, slides: cfg.max_slides });
       const def = $('#upload-mode input[value="' + (cfg.image_attachment_mode || "embedded_full") + '"]', view);
       if (def) def.checked = true;
+      $("#upload-exclude-bg", view).checked = cfg.exclude_backgrounds !== false;
     } catch (e) { /* ignore */ }
     const dz = $("#dropzone", view), input = $("#file", view), nameEl = $("#file-name", view);
     input.addEventListener("change", () => { nameEl.textContent = input.files[0] ? input.files[0].name + " (" + Math.round(input.files[0].size / 1024 / 1024 * 10) / 10 + " MB)" : ""; });
@@ -146,6 +147,7 @@
       fd.append("title", $("#title", view).value);
       const modeIn = $('#upload-mode input[name="image_mode"]:checked', view);
       fd.append("image_mode", modeIn ? modeIn.value : "embedded_full");
+      fd.append("exclude_backgrounds", $("#upload-exclude-bg", view).checked ? "true" : "false");
       const btn = $("#upload-btn", view), prog = $("#upload-progress", view);
       btn.disabled = true; prog.hidden = false; prog.value = 0;
       const xhr = new XMLHttpRequest();
@@ -196,6 +198,17 @@
       try { await api("DELETE", "/api/jobs/" + jobId); location.hash = "#/jobs"; } catch (e) { toast(t("common.error", { msg: e.message }), true); }
     });
     $("#btn-preview", view).addEventListener("click", () => showPreview(jobId));
+    const bgChk = $("#job-exclude-bg", view);
+    bgChk.addEventListener("change", async () => {
+      const prev = state.job ? !!state.job.exclude_backgrounds : true;
+      const published = !!(state.job && state.job.servicenow && state.job.servicenow.sys_id);
+      if (published && !confirm(t("job.confirmModeChange"))) { bgChk.checked = prev; return; }
+      try {
+        await api("PATCH", "/api/jobs/" + jobId, { exclude_backgrounds: bgChk.checked });
+        toast(t("job.modeSaved"));
+        load();
+      } catch (e) { bgChk.checked = prev; toast(t("common.error", { msg: e.message }), true); }
+    });
     $("#filter-failed", view).addEventListener("change", () => renderSlides(view, state.job));
     $("#filter-review", view).addEventListener("change", () => renderSlides(view, state.job));
     $("#show-original", view).addEventListener("change", () => renderSlides(view, state.job));
@@ -268,6 +281,8 @@
         const mode = job.image_mode || "embedded";
         if (document.activeElement !== modeSel) modeSel.value = mode;
         $("#job-mode-pill", view).textContent = t("mode.title") + ": " + t("mode." + mode);
+        $("#job-bg-pill", view).textContent = t(job.exclude_backgrounds ? "bg.pillExcluded" : "bg.pillIncluded") + (job.images_background ? " (" + job.images_background + ")" : "");
+        if (document.activeElement !== bgChk) bgChk.checked = !!job.exclude_backgrounds;
         const modeChanged = !!(job.servicenow && job.servicenow.mode_changed);
         $("#publish-mode-changed", view).hidden = !modeChanged;
         $("#btn-publish", view).textContent = t(modeChanged ? "publish.republish" : (job.servicenow && job.servicenow.number ? "publish.update" : "publish.create"));
@@ -417,6 +432,14 @@
     $(".btn-retry", node).disabled = s.status === "processing";
   }
 
+  function reasonText(r) {  // "code: English text" -> translated code, else the text
+    const m = /^([a-z_]+):\s*(.*)$/.exec(r || "");
+    if (!m) return r || "";
+    const key = "reason." + m[1];
+    const tr = t(key);
+    return tr === key ? m[2] : tr;
+  }
+
   function renderThumbs(node, s, job) {
     const box = $(".slide-images", node), thumbs = $(".thumbs", node);
     const images = s.images || [];
@@ -428,17 +451,17 @@
     const selectable = mode === "embedded";
     $(".slide-images-count", node).textContent = images.length ? (selectable ? t("slide.imagesCount", { sel: selected, total: images.length }) : t("slide.imagesAttachedAll", { total: images.length })) : "";
     $(".slide-images-empty", node).hidden = images.length > 0;
-    const key = JSON.stringify([mode, images.map(i => [i.idx, i.selected, i.file_name, i.attachment_sys_id])]);
+    const key = JSON.stringify([mode, images.map(i => [i.idx, i.selected, i.file_name, i.attachment_sys_id, i.excluded])]);
     if (thumbs.dataset.key === key) return;  // unchanged - keep the DOM (and any checkbox the user is clicking)
     thumbs.dataset.key = key;
     thumbs.innerHTML = "";
     images.forEach(im => {
-      const card = el("div", { class: "thumb" + (im.selected || !selectable ? "" : " excluded") + (im.flagged ? " flagged" : "") });
+      const card = el("div", { class: "thumb" + ((im.selected || !selectable) && !im.excluded ? "" : " excluded") + (im.flagged ? " flagged" : "") + (im.is_background ? " background" : "") });
       if (im.url) card.appendChild(el("img", { src: im.url, loading: "lazy", alt: (im.shape_name || "image") + " " + im.idx }));
       else card.appendChild(el("div", { class: "thumb-missing", text: t("slide.imageUnsupported", { fmt: im.original_format || "?" }) }));
       const cb = el("input", { type: "checkbox", class: "thumb-select", "data-idx": im.idx });
-      cb.checked = !!im.selected;
-      if (!im.supported || !im.url) cb.disabled = true;
+      cb.checked = !!im.selected && !im.excluded;
+      if (!im.supported || !im.url || im.excluded) cb.disabled = true;
       const label = el("label", { class: "check" }, [cb, el("span", { text: t("slide.includeImage") })]);
       if (mode !== "embedded") label.hidden = true;  // in the other modes every embedded image is attached; nothing to choose
       card.appendChild(label);
@@ -450,7 +473,8 @@
       if (im.reuse_count > 1) meta.push(t("img.reused", { n: im.reuse_count }));
       if (im.source_kind === "background") meta.push(t("img.background"));
       card.appendChild(el("div", { class: "muted thumb-meta", text: meta.join(" · ") }));
-      if (im.file_name) card.appendChild(el("div", { class: "thumb-name", dir: "ltr", text: im.file_name + (im.attachment_sys_id ? " ✔" : "") }));
+      if (im.is_background) card.appendChild(el("div", { class: "thumb-bg", text: (im.excluded ? t("bg.badgeExcluded") : t("bg.badgeIncluded")) + (im.background_reason ? " · " + reasonText(im.background_reason) : "") }));
+      if (im.file_name && !im.excluded) card.appendChild(el("div", { class: "thumb-name", dir: "ltr", text: im.file_name + (im.attachment_sys_id ? " ✔" : "") }));
       const reasons = (im.reasons || []).map(r => {
         const m = /^([a-z_]+):\s*(.*)$/.exec(r);  // "code: English text" from the classifier
         if (!m) return r;

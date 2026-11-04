@@ -95,7 +95,15 @@ window.I18N = {
     "publish.confirmRepublish": "Rewrite the existing draft article with the new image output mode? Attachments of the previous mode are not deleted.",
     "job.confirmModeChange": "This presentation already has a Knowledge article. Changing the mode does not modify the article by itself - you will need to republish it explicitly. Continue?",
     "slide.embeddedAttachOnly": "Embedded images (attached to the article; the article body shows the full slide)",
-    "slide.imagesAttachedAll": "{total} attached", "job.imagesAttached": "embedded images: {total}"
+    "slide.imagesAttachedAll": "{total} attached", "job.imagesAttached": "embedded images: {total}",
+    "bg.exclude": "Exclude slide backgrounds",
+    "bg.help": "Slide background pictures, theme/master graphics and repeated decoration (logos, strips, watermarks) are left out of the extracted images. Screenshots, diagrams, photos and charts are kept. The full slide render is unaffected and is always analysed by Qwen.",
+    "bg.pillExcluded": "Backgrounds: excluded", "bg.pillIncluded": "Backgrounds: included",
+    "bg.badgeExcluded": "Background - excluded", "bg.badgeIncluded": "Background - included",
+    "settings.excludeBg": "Exclude slide backgrounds by default for new presentations",
+    "reason.slide_background": "slide background picture", "reason.master_background": "background inherited from the layout/master",
+    "reason.layout_picture": "picture placed on the layout/master", "reason.full_bleed": "full-bleed picture behind the content",
+    "reason.repeated_large": "large picture repeated on several slides", "reason.decorative": "decoration (repeated branding / strip / uniform fill)"
   },
   he: {
     "app.title": "PowerPoint ← מאמר ידע ב-ServiceNow",
@@ -192,6 +200,14 @@ window.I18N = {
     "publish.confirmRepublish": "לכתוב מחדש את טיוטת המאמר הקיימת במצב התמונות החדש? הקבצים המצורפים של המצב הקודם לא יימחקו.",
     "job.confirmModeChange": "למצגת זו כבר קיים מאמר ידע. שינוי המצב לא משנה את המאמר מעצמו - תצטרך לפרסם מחדש במפורש. להמשיך?",
     "slide.embeddedAttachOnly": "תמונות משובצות (מצורפות למאמר; בגוף המאמר מוצגת השקופית המלאה)",
-    "slide.imagesAttachedAll": "{total} מצורפות", "job.imagesAttached": "תמונות משובצות: {total}"
+    "slide.imagesAttachedAll": "{total} מצורפות", "job.imagesAttached": "תמונות משובצות: {total}",
+    "bg.exclude": "אל תכלול רקעים של שקופיות",
+    "bg.help": "תמונות רקע של שקופיות, גרפיקה של התבנית/המאסטר וקישוטים חוזרים (לוגו, פסים, סימני מים) לא ייכנסו לתמונות שחולצו. צילומי מסך, תרשימים, תמונות וגרפים נשמרים. רינדור השקופית המלאה אינו מושפע ונשלח תמיד ל-Qwen.",
+    "bg.pillExcluded": "רקעים: לא נכללים", "bg.pillIncluded": "רקעים: נכללים",
+    "bg.badgeExcluded": "רקע - לא נכלל", "bg.badgeIncluded": "רקע - נכלל",
+    "settings.excludeBg": "אל תכלול רקעים של שקופיות כברירת מחדל במצגות חדשות",
+    "reason.slide_background": "תמונת רקע של השקופית", "reason.master_background": "רקע שיורש מהתבנית/המאסטר",
+    "reason.layout_picture": "תמונה שממוקמת בתבנית/במאסטר", "reason.full_bleed": "תמונה על כל השקופית מאחורי התוכן",
+    "reason.repeated_large": "תמונה גדולה שחוזרת בכמה שקופיות", "reason.decorative": "קישוט (מיתוג חוזר / פס / מילוי אחיד)"
   }
 };

@@ -77,6 +77,8 @@
         <label class="mode-option"><input type="radio" name="image_mode" value="full_slide">
           <span><strong data-i18n="mode.full_slide">Full Slides Only</strong><small data-i18n="mode.full_slide.desc">Article body: the complete slide + explanation. Attachments: the complete slides only.</small></span></label>
       </fieldset>
+      <label class="check"><input type="checkbox" id="upload-exclude-bg" name="exclude_backgrounds" checked> <span data-i18n="bg.exclude">Exclude slide backgrounds</span></label>
+      <p class="muted small-help" data-i18n="bg.help">Slide background pictures, theme/master graphics and repeated decoration (logos, strips, watermarks) are left out of the extracted images. Screenshots, diagrams, photos and charts are kept. The full slide render is unaffected and is always analysed by Qwen.</p>
       <p class="muted" id="upload-limits"></p>
       <div class="row">
         <button class="btn btn-primary" type="submit" id="upload-btn" data-i18n="upload.start">Upload and process</button>
@@ -93,7 +95,7 @@
         <a href="#/jobs" class="muted">&larr; <span data-i18n="job.back">All presentations</span></a>
         <h1 id="job-title" class="editable" contenteditable="true" spellcheck="false"></h1>
         <div class="muted" id="job-meta"></div>
-        <div class="row gap" style="margin-top:0.3rem"><span class="pill info" id="job-mode-pill"></span></div>
+        <div class="row gap wrap" style="margin-top:0.3rem"><span class="pill info" id="job-mode-pill"></span><span class="pill info" id="job-bg-pill"></span></div>
       </div>
       <div class="row gap wrap" id="job-actions">
         <button class="btn" id="btn-resume" data-i18n="job.resume" hidden>Resume</button>
@@ -137,6 +139,7 @@
             <option value="full_slide" data-i18n="mode.full_slide">Full Slides Only</option>
           </select>
         </label>
+        <label class="check"><input type="checkbox" id="job-exclude-bg"> <span data-i18n="bg.exclude">Exclude slide backgrounds</span></label>
         <label class="check"><input type="checkbox" id="attach-pptx"> <span data-i18n="publish.attachPptx">Attach original PPTX</span></label>
         <button class="btn btn-primary" id="btn-publish" data-i18n="publish.create">Create draft article</button>
       </div>
@@ -240,6 +243,7 @@
         </select>
       </label>
       <p class="muted" data-i18n="settings.imageModeHelp">Default for new presentations; each presentation can choose its own mode at upload. Embedded Images Only: original images in the article body and attachments. Embedded Images + Full Slides: full slides in the body; full slides and original images as attachments. Full Slides Only: full slides in the body and attachments. Qwen always analyses the complete slide.</p>
+      <label class="check"><input type="checkbox" name="exclude_backgrounds"> <span data-i18n="settings.excludeBg">Exclude slide backgrounds by default for new presentations</span></label>
       <div class="grid2">
         <label><span data-i18n="settings.qualityRetries">Quality retries per slide (answers that fail validation)</span><input name="qwen_quality_retries" type="number" min="0" max="5"></label>
         <label class="check"><input type="checkbox" name="ascii_filenames"> <span data-i18n="settings.asciiNames">ASCII-only attachment file names (drop Hebrew from names)</span></label>
