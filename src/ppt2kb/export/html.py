@@ -173,7 +173,7 @@ def build_standalone_html(*, title: str, slides: Iterable[SlideData], job_dir: O
     def figs(s: SlideData) -> List[Tuple[str, str]]:
         out: List[Tuple[str, str]] = []
         for i, im in enumerate(s.images or [], start=1):
-            if not im.get("selected") or not im.get("file_ref"):
+            if not im.get("selected") or not im.get("file_ref") or im.get("excluded"):
                 continue
             alt = f"{_heading_for(s)} - image {i}"
             if embed_images and job_dir and (job_dir / im["file_ref"]).is_file():

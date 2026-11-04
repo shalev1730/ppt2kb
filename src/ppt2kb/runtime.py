@@ -41,6 +41,7 @@ PUBLIC_KEYS: Dict[str, type] = {
     "qwen_extra_body_json": str,
     "qwen_quality_retries": int,
     "image_attachment_mode": str,
+    "exclude_backgrounds": bool,
     "ascii_filenames": bool,
     "servicenow_url": str,
     "servicenow_auth_type": str,

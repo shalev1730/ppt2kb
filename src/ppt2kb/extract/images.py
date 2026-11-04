@@ -57,7 +57,7 @@ class ExtractedImage:
     slide_number: int
     index: int  # 1-based order on the slide (z-order / document order)
     shape_name: str
-    source_kind: str  # picture | placeholder | shape_fill | background | group_picture
+    source_kind: str  # picture | placeholder | shape_fill | background | group_picture | master_background | layout_picture
     original_ext: str  # ext of the asset in the package (png, jpeg, emf, ...)
     sha256: str  # of the original asset bytes (identifies reused assets)
     file_ref: str = ""  # relative path of the saved visible image (images/emb/...)
@@ -78,6 +78,13 @@ class ExtractedImage:
     reuse_count: int = 1  # how many slides show the same asset
     supported: bool = True
     note: str = ""  # limitation / flag for review
+    # --- background / decoration classification (1.1.2); structure first, heuristics second
+    z_index: int = 0  # position of the top-level shape in the slide's shape tree (0 = back-most)
+    shapes_above: int = 0  # number of top-level shapes drawn after (over) this one
+    is_background_candidate: bool = False  # slide background fill, or full-bleed picture behind other content
+    is_master_background: bool = False  # background fill or picture inherited from the layout / master
+    is_decorative: bool = False  # strong decorative evidence (set by classify_images)
+    background_reason: str = ""  # why it counts as background/decoration ("" = content image)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -157,18 +164,21 @@ def _save(img_bytes: bytes, ext: str, transform_needed: bool, dest: Path) -> Tup
 
 
 # ------------------------------------------------------------------------ extraction
-def _iter_pictures(shapes, in_group: bool = False, group_count: int = 1):
-    """Yield (shape, in_group, group_picture_count) for every picture-like shape, depth first."""
+def _iter_pictures(shapes, in_group: bool = False, group_count: int = 1, z_index: Optional[int] = None):
+    """Yield (shape, in_group, group_picture_count, z_index) for every picture-like shape, depth first.
+
+    ``z_index`` is the position of the *top-level* shape in document order (= z-order, 0 is back-most)."""
     from pptx.enum.shapes import MSO_SHAPE_TYPE
 
-    for shape in shapes:
+    for i, shape in enumerate(shapes):
+        z = i if z_index is None else z_index
         st = shape.shape_type
         if st == MSO_SHAPE_TYPE.GROUP:
             members = list(shape.shapes)
             n_pics = sum(1 for m in members if m.shape_type in (MSO_SHAPE_TYPE.PICTURE, MSO_SHAPE_TYPE.PLACEHOLDER, MSO_SHAPE_TYPE.GROUP) or _has_blip(m))
-            yield from _iter_pictures(members, True, max(1, n_pics))
+            yield from _iter_pictures(members, True, max(1, n_pics), z)
         else:
-            yield shape, in_group, group_count
+            yield shape, in_group, group_count, z
 
 
 def _has_blip(shape) -> bool:
@@ -209,20 +219,52 @@ def extract_slide_images(pptx_path: Path, out_dir: Path, *, max_slides: int = 30
     for s_idx, slide in enumerate(prs.slides, start=1):
         if s_idx > max_slides:
             break
-        placements: List[tuple] = []  # (shape_or_None, kind, blob, ext, crop, rot, flipH, flipV, bbox, in_group, group_n, name)
+        placements: List[tuple] = []  # (shape_or_None, kind, blob, ext, crop, rot, flipH, flipV, bbox, in_group, group_n, name, z, origin)
+        n_top = len(list(slide.shapes))
 
-        # background picture fill
+        # background picture fill of the slide itself, else the one inherited from layout / master
         try:
             bg = slide._element.find(".//p:cSld/p:bg//a:blip", NS)
             if bg is not None:
                 got = _blob_for(slide.part, bg)
                 if got:
                     src_rect = slide._element.find(".//p:cSld/p:bg//a:srcRect", NS)
-                    placements.append((None, "background", got[0], got[1], _crop_from_srcrect(src_rect), 0.0, False, False, (0, 0, slide_w, slide_h), False, 1, "background"))
+                    placements.append((None, "background", got[0], got[1], _crop_from_srcrect(src_rect), 0.0, False, False, (0, 0, slide_w, slide_h), False, 1, "background", -1, "slide"))
+            elif slide._element.find(".//p:cSld/p:bg", NS) is None:
+                for origin, part_obj in (("layout", slide.slide_layout), ("master", slide.slide_layout.slide_master)):
+                    mbg = part_obj._element.find(".//p:cSld/p:bg//a:blip", NS)
+                    if mbg is not None:
+                        got = _blob_for(part_obj.part, mbg)
+                        if got:
+                            src_rect = part_obj._element.find(".//p:cSld/p:bg//a:srcRect", NS)
+                            placements.append((None, "master_background", got[0], got[1], _crop_from_srcrect(src_rect), 0.0, False, False, (0, 0, slide_w, slide_h), False, 1, f"{origin} background", -1, origin))
+                        break
+                    if part_obj._element.find(".//p:cSld/p:bg", NS) is not None:
+                        break  # the layout defines a non-picture background; the master is not consulted
         except Exception as e:  # pragma: no cover - defensive
             logger.debug("background inspection failed on slide %s: %s", s_idx, e)
 
-        for shape, in_group, group_n in _iter_pictures(slide.shapes):
+        # pictures placed on the layout / master (theme graphics, branding strips) shown behind the slide
+        try:
+            if slide._element.find("./p:cSld", NS) is not None and slide._element.find("./p:cSld", NS).get("showMasterSp", "1") != "0":
+                for origin, part_obj in (("layout", slide.slide_layout), ("master", slide.slide_layout.slide_master)):
+                    for shape, in_group, group_n, z in _iter_pictures(part_obj.shapes):
+                        try:
+                            if shape.shape_type != MSO_SHAPE_TYPE.PICTURE:
+                                continue
+                            blips = shape._element.findall(".//a:blip", NS)
+                            got = _blob_for(shape.part, blips[0]) if blips else None
+                            if not got:
+                                continue
+                            rotation, flip_h, flip_v = _xfrm_flags(shape._element)
+                            bbox = (shape.left or 0, shape.top or 0, shape.width or 0, shape.height or 0)
+                            placements.append((shape, "layout_picture", got[0], got[1], (0.0, 0.0, 0.0, 0.0), rotation, flip_h, flip_v, bbox, in_group, group_n, f"{origin}: {shape.name or ''}", -1, origin))
+                        except Exception as e:  # pragma: no cover - defensive
+                            logger.debug("layout picture inspection failed on slide %s: %s", s_idx, e)
+        except Exception as e:  # pragma: no cover - defensive
+            logger.debug("layout inspection failed on slide %s: %s", s_idx, e)
+
+        for shape, in_group, group_n, z in _iter_pictures(slide.shapes):
             try:
                 el = shape._element
                 blips = el.findall(".//a:blip", NS)
@@ -247,11 +289,11 @@ def extract_slide_images(pptx_path: Path, out_dir: Path, *, max_slides: int = 30
                     crop = _crop_from_srcrect(el.find(".//a:srcRect", NS))
                 rotation, flip_h, flip_v = _xfrm_flags(el)
                 bbox = (shape.left or 0, shape.top or 0, shape.width or 0, shape.height or 0)
-                placements.append((shape, kind, blob, ext, crop, rotation, flip_h, flip_v, bbox, in_group, group_n, shape.name or ""))
+                placements.append((shape, kind, blob, ext, crop, rotation, flip_h, flip_v, bbox, in_group, group_n, shape.name or "", z, "slide"))
             except Exception as e:
                 logger.warning("Slide %s: could not inspect shape %s: %s", s_idx, getattr(shape, "name", "?"), e.__class__.__name__)
 
-        for idx, (shape, kind, blob, ext, crop, rotation, flip_h, flip_v, bbox, in_group, group_n, name) in enumerate(placements, start=1):
+        for idx, (shape, kind, blob, ext, crop, rotation, flip_h, flip_v, bbox, in_group, group_n, name, z, origin) in enumerate(placements, start=1):
             sha = hashlib.sha256(blob).hexdigest()
             seen_sha_slides.setdefault(sha, set()).add(s_idx)
             item = ExtractedImage(
@@ -271,7 +313,24 @@ def extract_slide_images(pptx_path: Path, out_dir: Path, *, max_slides: int = 30
                 flip_v=flip_v,
                 in_group=in_group,
                 group_pictures=group_n,
+                z_index=max(0, z),
+                shapes_above=(n_top - 1 - z) if z >= 0 else n_top,
             )
+            # --- structural background classification
+            if kind == "background":
+                item.is_background_candidate = True
+                item.background_reason = "slide_background: picture fill of the slide background"
+            elif kind == "master_background":
+                item.is_master_background = True
+                item.background_reason = f"master_background: background picture inherited from the {origin}"
+            elif kind == "layout_picture":
+                item.is_master_background = True
+                item.background_reason = f"layout_picture: picture placed on the {origin} (shown behind every slide that uses it)"
+            elif not in_group:
+                coverage = max(0.0, item.rel_width) * max(0.0, item.rel_height)
+                if coverage >= 0.85 and item.left <= 0.05 and item.top <= 0.05 and z == 0 and item.shapes_above >= 1:
+                    item.is_background_candidate = True
+                    item.background_reason = f"full_bleed: covers {coverage:.0%} of the slide, back-most, {item.shapes_above} shape(s) drawn over it"
             if ext in VECTOR_EXTS or ext not in RASTER_EXTS:
                 item.supported = False
                 item.note = f"unsupported image format '{ext}' (vector/other) - cannot reproduce its visible appearance; review the full-slide rendering"
@@ -303,4 +362,9 @@ def extract_slide_images(pptx_path: Path, out_dir: Path, *, max_slides: int = 30
 
     for item in results:
         item.reuse_count = len(seen_sha_slides.get(item.sha256, {item.slide_number}))
+        # a large picture repeated on several slides behaves like a theme background
+        coverage = max(0.0, item.rel_width) * max(0.0, item.rel_height)
+        if not item.background_reason and not item.in_group and item.reuse_count >= 3 and coverage >= 0.5:
+            item.is_background_candidate = True
+            item.background_reason = f"repeated_large: covers {coverage:.0%} of the slide and is repeated on {item.reuse_count} slides"
     return results

@@ -24,7 +24,7 @@ from . import __version__
 from .export import build_article_html, build_standalone_html
 from .llm import QwenClient
 from .pipeline.processor import sha256_file
-from .schemas.deck import IMAGE_MODES, attaches_embedded, body_uses_full_slide, JobStatus, SlideStatus
+from .schemas.deck import IMAGE_MODES, attaches_embedded, body_uses_full_slide, excludes_backgrounds, image_is_usable, JobStatus, SlideStatus
 from .security.upload_validation import UploadValidationError, validate_presentation
 from .servicenow import PublishError, ServiceNowClient, ServiceNowError, publish_job
 
@@ -177,16 +177,21 @@ def _job_view(ctx, job: dict, include_slides: bool = True) -> dict:
         "servicenow": job["servicenow"],
         "counts": counts,
         "image_mode": (job.get("options") or {}).get("image_mode", "embedded"),
+        "exclude_backgrounds": excludes_backgrounds(job.get("options")),
         "source_kind": job.get("source_kind"),
         "active": ctx.runner.is_active(job["id"]) or job["id"] in ctx.publish_threads and ctx.publish_threads[job["id"]].is_alive(),
     }
     all_images = ctx.db.get_slide_images(job["id"])
-    out["images_total"] = len(all_images)
-    out["images_selected"] = sum(1 for im in all_images if im["selected"])
+    no_bg = out["exclude_backgrounds"]
+    usable = [im for im in all_images if image_is_usable(im, no_bg)]
+    out["images_total"] = len(usable)  # images that take part in the article (attachments / body) in this configuration
+    out["images_selected"] = sum(1 for im in usable if im["selected"])
+    out["images_background"] = sum(1 for im in all_images if im["is_background"])
+    out["images_excluded"] = len(all_images) - len(usable)
     if include_slides:
         images_by_slide: dict = {}
         for im in all_images:
-            images_by_slide.setdefault(im["slide_number"], []).append(_image_view(job["id"], im))
+            images_by_slide.setdefault(im["slide_number"], []).append(_image_view(job["id"], im, no_bg))
         out["slides"] = [
             {
                 "number": s.number,
@@ -211,9 +216,12 @@ def _job_view(ctx, job: dict, include_slides: bool = True) -> dict:
     return out
 
 
-def _image_view(job_id: str, im: dict) -> dict:
+def _image_view(job_id: str, im: dict, exclude_backgrounds: bool = False) -> dict:
     return {
         "idx": im["idx"],
+        "is_background": bool(im.get("is_background")),
+        "background_reason": im.get("background_reason", ""),
+        "excluded": not image_is_usable(im, exclude_backgrounds),
         "slide_number": im["slide_number"],
         "url": f"/api/jobs/{job_id}/slides/{im['slide_number']}/images/{im['idx']}" if im["file_ref"] else None,
         "file_ref": im["file_ref"],
@@ -246,7 +254,7 @@ async def list_jobs(request: Request):
 
 
 @router.post("/jobs", status_code=201)
-async def create_job(request: Request, file: UploadFile = File(...), title: str = Form(""), autostart: bool = Form(True), image_mode: str = Form("")):
+async def create_job(request: Request, file: UploadFile = File(...), title: str = Form(""), autostart: bool = Form(True), image_mode: str = Form(""), exclude_backgrounds: str = Form("")):
     ctx = _ctx(request)
     s = ctx.settings
     job_id = uuid.uuid4().hex
@@ -290,6 +298,11 @@ async def create_job(request: Request, file: UploadFile = File(...), title: str 
     if mode not in IMAGE_MODES:
         dest.unlink(missing_ok=True)
         raise HTTPException(400, "image_mode must be one of " + ", ".join(IMAGE_MODES))
+    eb = exclude_backgrounds.strip().lower()
+    if eb and eb not in ("true", "false", "1", "0", "yes", "no", "on", "off"):
+        dest.unlink(missing_ok=True)
+        raise HTTPException(400, "exclude_backgrounds must be true or false")
+    no_bg = eb in ("true", "1", "yes", "on") if eb else bool(ctx.runtime.get("exclude_backgrounds"))
     ctx.db.create_job(
         job_id=job_id,
         display_name=result.display_name,
@@ -299,7 +312,7 @@ async def create_job(request: Request, file: UploadFile = File(...), title: str 
         source_kind=result.kind,
         source_size=result.size_bytes,
         macro_enabled=result.macro_enabled,
-        options={"image_mode": mode},
+        options={"image_mode": mode, "exclude_backgrounds": no_bg},
     )
     (s.jobs_dir / job_id).mkdir(parents=True, exist_ok=True)
     if autostart:
@@ -319,6 +332,7 @@ class JobUpdate(BaseModel):
     title: Optional[str] = None
     kb_sys_id: Optional[str] = None
     image_mode: Optional[str] = None
+    exclude_backgrounds: Optional[bool] = None
 
 
 @router.patch("/jobs/{job_id}")
@@ -332,19 +346,25 @@ async def update_job(request: Request, job_id: str, body: JobUpdate):
         if not re.match(r"^[0-9a-fA-F]{0,32}$", body.kb_sys_id):
             raise HTTPException(400, "invalid knowledge base id")
         fields["kb_sys_id"] = body.kb_sys_id
-    if body.image_mode is not None:
-        if body.image_mode not in IMAGE_MODES:
+    if body.image_mode is not None or body.exclude_backgrounds is not None:
+        if body.image_mode is not None and body.image_mode not in IMAGE_MODES:
             raise HTTPException(400, "image_mode must be one of " + ", ".join(IMAGE_MODES))
         job = ctx.db.get_job(job_id)
         if ctx.runner.is_active(job_id) or job["status"] == JobStatus.publishing.value:
-            raise HTTPException(409, "the image mode cannot be changed while the presentation is being processed or published")
+            raise HTTPException(409, "the image options cannot be changed while the presentation is being processed or published")
         opts = dict(job.get("options") or {})
-        if opts.get("image_mode") != body.image_mode:
+        changed = False
+        if body.image_mode is not None and opts.get("image_mode") != body.image_mode:
             opts["image_mode"] = body.image_mode
+            changed = True
+        if body.exclude_backgrounds is not None and excludes_backgrounds(opts) != body.exclude_backgrounds:
+            opts["exclude_backgrounds"] = body.exclude_backgrounds
+            changed = True
+        if changed:
             fields["options"] = opts
             sn = dict(job.get("servicenow") or {})
             if sn.get("sys_id"):
-                # an article already exists with the previous mode: the user must republish explicitly
+                # an article already exists with the previous options: the user must republish explicitly
                 sn["mode_changed"] = True
                 fields["servicenow"] = sn
     ctx.db.update_job(job_id, **fields)
@@ -555,7 +575,7 @@ async def preview_html(request: Request, job_id: str, slide: Optional[int] = Non
         title=job["title"] or job["display_name"],
         slides=slides,
         image_src=(lambda s: f"/api/jobs/{job_id}/slides/{s.number}/image") if body_uses_full_slide(mode) else None,
-        figures_for=(lambda s: [(f"/api/jobs/{job_id}/slides/{s.number}/images/{im['idx']}", f"{s.title or 'slide ' + str(s.number)} - image {im['idx']}") for im in s.images if im.get("selected") and im.get("file_ref")]) if mode == "embedded" else None,
+        figures_for=(lambda s: [(f"/api/jobs/{job_id}/slides/{s.number}/images/{im['idx']}", f"{s.title or 'slide ' + str(s.number)} - image {im['idx']}") for im in s.images if im.get("selected") and not im.get("excluded")]) if mode == "embedded" else None,
         deck_name=job["display_name"],
         sections_only=slide is not None,
     )
@@ -563,9 +583,13 @@ async def preview_html(request: Request, job_id: str, slide: Optional[int] = Non
 
 
 def _slides_with_images(ctx, job_id: str):
+    job = ctx.db.get_job(job_id)
+    no_bg = excludes_backgrounds(job.get("options") if job else None)
     slides = ctx.db.get_slides(job_id)
     by_slide: dict = {}
     for im in ctx.db.get_slide_images(job_id):
+        im = dict(im)
+        im["excluded"] = not image_is_usable(im, no_bg)
         by_slide.setdefault(im["slide_number"], []).append(im)
     for s in slides:
         s.images = by_slide.get(s.number, [])
@@ -602,8 +626,12 @@ async def publish(request: Request, job_id: str, body: PublishRequest):
     if sn_state.get("sys_id") and not body.image_mode and sn_state.get("image_mode") and sn_state["image_mode"] != mode and not sn_state.get("mode_changed"):
         # a retry must never silently switch the mode the article was created with
         mode = sn_state["image_mode"]
+    opts = dict(job.get("options") or {})
+    if sn_state.get("sys_id") and "exclude_backgrounds" in sn_state and not sn_state.get("mode_changed") \
+            and excludes_backgrounds(opts) != bool(sn_state["exclude_backgrounds"]):
+        opts["exclude_backgrounds"] = bool(sn_state["exclude_backgrounds"])  # a retry keeps the option the article was created with
+        ctx.db.update_job(job_id, options=opts)
     if mode != stored_mode:
-        opts = dict(job.get("options") or {})
         opts["image_mode"] = mode
         ctx.db.update_job(job_id, options=opts)
     if attaches_embedded(mode) and job["source_kind"] == "pptx" and not ctx.db.get_slide_images(job_id):

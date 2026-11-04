@@ -33,7 +33,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from ..export.filenames import attachment_filename, slide_filename
 from ..export.html import build_article_html, job_marker, _heading_for
-from ..schemas.deck import IMAGE_MODES, JobStatus, SlideData, SlideStatus, attaches_embedded, attaches_full_slides, body_uses_full_slide
+from ..schemas.deck import IMAGE_MODES, JobStatus, SlideData, SlideStatus, attaches_embedded, attaches_full_slides, body_uses_full_slide, excludes_backgrounds, image_is_usable
 from ..storage.db import Database
 from .client import ServiceNowClient, ServiceNowError
 
@@ -79,6 +79,7 @@ def publish_job(
     mode = image_mode or (job.get("options") or {}).get("image_mode") or "embedded"
     if mode not in IMAGE_MODES:
         raise PublishError(f"unknown image mode {mode}")
+    no_bg = excludes_backgrounds(job.get("options"))
 
     state: Dict = dict(job.get("servicenow") or {})
     marker = job_marker(job_id)
@@ -117,10 +118,10 @@ def publish_job(
             created = client.create_article(short_description=title, text_html=placeholder, kb_sys_id=kb_sys_id)
             sys_id = created["sys_id"]
             number = created.get("number", "")
-            _save(sys_id=sys_id, number=number, kb_sys_id=kb_sys_id, stage="created", image_mode=mode)
+            _save(sys_id=sys_id, number=number, kb_sys_id=kb_sys_id, stage="created", image_mode=mode, exclude_backgrounds=no_bg)
             _progress("create", 1, 1)
         else:
-            _save(sys_id=sys_id, number=number, kb_sys_id=kb_sys_id, image_mode=mode)
+            _save(sys_id=sys_id, number=number, kb_sys_id=kb_sys_id, image_mode=mode, exclude_backgrounds=no_bg)
 
         # 3) images -------------------------------------------------------------
         remote_attachments = {a["file_name"]: a["sys_id"] for a in client.list_attachments("kb_knowledge", sys_id)}
@@ -129,7 +130,7 @@ def publish_job(
         if attaches_full_slides(mode):
             n_att += _upload_full_slides(db, client, job_id, sys_id, slides, jobs_dir, remote_attachments, remote_ids, ascii_filenames, _progress)
         if attaches_embedded(mode):
-            n_att += _upload_embedded(db, client, job_id, sys_id, slides, jobs_dir, remote_attachments, remote_ids, ascii_filenames, _progress)
+            n_att += _upload_embedded(db, client, job_id, sys_id, slides, jobs_dir, remote_attachments, remote_ids, ascii_filenames, _progress, no_bg)
         _save(stage="attachments_done")
 
         # 4) optional PPTX ------------------------------------------------------
@@ -150,7 +151,7 @@ def publish_job(
             title=title,
             slides=slides,
             image_src=(lambda s: _full_slide_src(db, job_id, s)) if body_uses_full_slide(mode) else None,
-            figures_for=(lambda s: _embedded_figures(db, job_id, s)) if mode == "embedded" else None,
+            figures_for=(lambda s: _embedded_figures(db, job_id, s, no_bg)) if mode == "embedded" else None,
             marker=marker,
             deck_name=job["display_name"],
         )
@@ -175,10 +176,10 @@ def _full_slide_src(db: Database, job_id: str, s: SlideData) -> str:
     return f"/sys_attachment.do?sys_id={m[s.number]}" if s.number in m else ""
 
 
-def _embedded_figures(db: Database, job_id: str, s: SlideData) -> List[Tuple[str, str]]:
+def _embedded_figures(db: Database, job_id: str, s: SlideData, exclude_backgrounds: bool = False) -> List[Tuple[str, str]]:
     out: List[Tuple[str, str]] = []
     for im in db.get_slide_images(job_id, s.number):
-        if im["selected"] and im["attachment_sys_id"]:
+        if im["selected"] and im["attachment_sys_id"] and image_is_usable(im, exclude_backgrounds):
             out.append((f"/sys_attachment.do?sys_id={im['attachment_sys_id']}", f"{_heading_for(s)} - image {im['idx']}"))
     return out
 
@@ -217,14 +218,17 @@ def _upload_full_slides(db, client, job_id, sys_id, slides, jobs_dir, remote_att
     return len(db.attachment_map(job_id))
 
 
-def _upload_embedded(db, client, job_id, sys_id, slides, jobs_dir, remote_attachments, remote_ids, ascii_filenames, progress) -> int:
+def _upload_embedded(db, client, job_id, sys_id, slides, jobs_dir, remote_attachments, remote_ids, ascii_filenames, progress, exclude_backgrounds: bool = False) -> int:
     """Upload every extracted embedded image (selected or not) with meaningful, unique names.
+
+    With ``exclude_backgrounds`` the images classified as slide background / master graphics /
+    decoration are left out entirely (not uploaded, not referenced).
 
     Identical images (same SHA-256, e.g. a logo repeated on every slide) are uploaded
     once; the later occurrences share the attachment sys_id. Returns the number of
     distinct attachments."""
     by_slide = {s.number: s for s in slides}
-    images = [im for im in db.get_slide_images(job_id) if im["file_ref"] and im["supported"]]
+    images = [im for im in db.get_slide_images(job_id) if image_is_usable(im, exclude_backgrounds)]
     used: set = set()
     # names already assigned keep their place (stable across retries)
     for im in images:

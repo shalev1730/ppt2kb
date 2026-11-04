@@ -179,3 +179,107 @@ if __name__ == "__main__":
     import sys
 
     build_embedded_deck(Path(sys.argv[1] if len(sys.argv) > 1 else "embedded_test.pptx"), int(sys.argv[2]) if len(sys.argv) > 2 else 60)
+
+
+def theme_background_png(w: int = 1600, h: int = 900, seed: int = 7) -> bytes:
+    """A soft gradient 'theme' picture with a few shapes - looks like a slide background."""
+    rnd = random.Random(seed)
+    im = Image.new("RGB", (w, h))
+    px = im.load()
+    for y in range(h):
+        for x in range(0, w, 1):
+            px[x, y] = (20 + x * 60 // w, 60 + y * 80 // h, 120 + (x + y) * 60 // (w + h))
+    d = ImageDraw.Draw(im)
+    for _ in range(12):
+        x, y, r = rnd.randint(0, w), rnd.randint(0, h), rnd.randint(40, 200)
+        d.ellipse((x - r, y - r, x + r, y + r), outline=(255, 255, 255), width=3)
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def _set_background_picture(slide_like, png: bytes) -> None:
+    """Give a slide / layout / master a picture background fill (``<p:bg><p:bgPr><a:blipFill>``)."""
+    from pptx.oxml import parse_xml
+    from pptx.oxml.ns import qn
+
+    _, r_id = slide_like.part.get_or_add_image_part(io.BytesIO(png))
+    bg = parse_xml(
+        '<p:bg xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+        'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        f'<p:bgPr><a:blipFill dpi="0" rotWithShape="1"><a:blip r:embed="{r_id}"/><a:srcRect/><a:stretch><a:fillRect/></a:stretch></a:blipFill>'
+        "<a:effectLst/></p:bgPr></p:bg>"
+    )
+    c_sld = slide_like._element.find(qn("p:cSld"))
+    old = c_sld.find(qn("p:bg"))
+    if old is not None:
+        c_sld.remove(old)
+    c_sld.insert(0, bg)
+
+
+def build_background_deck(path: Path) -> Path:
+    """A deck exercising the background / decoration cases (1.1.2). Slide plan:
+
+    1  'Login flow'      : picture background fill + one content screenshot        -> bg excluded, screenshot kept
+    2  'Theme 1'         : full-bleed theme picture at the back, title + text over it -> full_bleed excluded
+    3  'Theme 2'         : same theme picture + a JPEG photo (content)              -> theme excluded, photo kept
+    4  'Theme 3'         : same theme picture only                                   -> excluded (repeated x4 as well)
+    5  'Theme 4'         : same theme picture + diagram group (content)              -> theme excluded, group kept
+    6  (blank layout)    : one photo as the sole content, ~90% of the slide          -> KEPT (large is not background)
+    7  'Layout bg'       : layout 'Title and Content' with a picture background      -> master_background excluded
+    8  'Plain'           : text only
+    The slide master carries a small logo picture -> a layout_picture row on every slide, excluded.
+    """
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
+    blank, title_only, title_content = prs.slide_layouts[6], prs.slide_layouts[5], prs.slide_layouts[1]
+    theme = theme_background_png()
+    # master logo (shown on every slide) - python-pptx has no add_picture on masters, so build the <p:pic> directly
+    from pptx.oxml.shapes.picture import CT_Picture
+
+    _, logo_rid = prs.slide_master.part.get_or_add_image_part(io.BytesIO(logo_png(90)))
+    prs.slide_master.shapes._spTree.append(CT_Picture.new_pic(900, "Master logo", "logo.png", logo_rid, Inches(12.4), Inches(6.7), Inches(0.6), Inches(0.6)))
+    # layout with a picture background (used by slide 7 only)
+    _set_background_picture(title_content, theme_background_png(seed=11))
+
+    def title(slide, text, body=None):
+        slide.shapes.title.text = text
+        if body:
+            tb = slide.shapes.add_textbox(Inches(0.6), Inches(1.4), Inches(6), Inches(2))
+            tb.text_frame.text = body
+
+    s = prs.slides.add_slide(title_only)
+    _set_background_picture(s, theme_background_png(seed=3))
+    title(s, "Login flow / תהליך התחברות", "1. Open the portal\n2. Enter credentials")
+    s.shapes.add_picture(io.BytesIO(screenshot_png(seed=21, label="Login")), Inches(6.5), Inches(1.4), width=Inches(6))
+
+    for i, (name, extra) in enumerate((("Theme 1", None), ("Theme 2", "photo"), ("Theme 3", None), ("Theme 4", "group")), start=2):
+        s = prs.slides.add_slide(title_only)
+        # full-bleed picture first = back-most; the title placeholder already exists above it in z-order? No:
+        # placeholders come first in the shape tree, so move the picture to the back explicitly.
+        pic = s.shapes.add_picture(io.BytesIO(theme), 0, 0, width=prs.slide_width, height=prs.slide_height)
+        sp_tree = s.shapes._spTree
+        sp_tree.remove(pic._element)
+        sp_tree.insert(2, pic._element)  # after nvGrpSpPr and grpSpPr -> back-most shape
+        title(s, f"{name} - שלב {i}", f"Configuration value for step {i}: param_{i} = value_{i}")
+        if extra == "photo":
+            s.shapes.add_picture(io.BytesIO(photo_jpeg()), Inches(7), Inches(1.5), width=Inches(5))
+        if extra == "group":
+            icons = [s.shapes.add_picture(io.BytesIO(diagram_icon_png(k, 140)), Inches(7 + j * 1.8), Inches(3), width=Inches(1.2)) for j, k in enumerate(("client", "server", "db"))]
+            s.shapes.add_group_shape(icons)
+
+    s = prs.slides.add_slide(blank)
+    s.shapes.add_picture(io.BytesIO(screenshot_png(w=1600, h=900, seed=31, label="Full-screen screenshot")), Inches(0.6), Inches(0.4), width=Inches(12.2), height=Inches(6.8))
+
+    s = prs.slides.add_slide(title_content)
+    title(s, "Layout background slide", "Field: incident.short_description")
+    s.shapes.add_picture(io.BytesIO(diagram_icon_png("server", 160)), Inches(8), Inches(2), width=Inches(1.5))
+
+    s = prs.slides.add_slide(title_only)
+    title(s, "Plain text slide", "gs.info('done')")
+    prs.save(path)
+    return path

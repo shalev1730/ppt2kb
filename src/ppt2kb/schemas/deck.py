@@ -37,6 +37,21 @@ def attaches_full_slides(mode: str) -> bool:
     return mode in ("embedded_full", "full_slide")
 
 
+def excludes_backgrounds(options: Optional[dict]) -> bool:
+    """Per-presentation "Exclude slide backgrounds" option (1.1.2).
+
+    Presentations created before 1.1.2 have no stored value and keep their behaviour
+    (backgrounds included), so a retry never changes what an existing article contains."""
+    return bool((options or {}).get("exclude_backgrounds", False))
+
+
+def image_is_usable(image: dict, exclude_backgrounds: bool) -> bool:
+    """An extracted image that may be attached / shown: supported, on disk, and not an excluded background."""
+    if not image.get("supported", True) or not image.get("file_ref"):
+        return False
+    return not (exclude_backgrounds and image.get("is_background"))
+
+
 class SlideStatus(str, Enum):
     pending = "pending"
     processing = "processing"

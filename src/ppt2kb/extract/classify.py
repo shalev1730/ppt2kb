@@ -55,7 +55,8 @@ def classify_images(images: List[ExtractedImage], base_dir: Path, slide_count: i
         reasons: List[str] = []
         score = 0.0  # > 0 informative, < 0 decorative
         if not img.supported or not img.file_ref:
-            out.append({"selected": False, "score": 0.0, "reasons": ["unsupported: " + (img.note or "unsupported format")], "flagged": True})
+            out.append({"selected": False, "score": 0.0, "reasons": ["unsupported: " + (img.note or "unsupported format")], "flagged": True,
+                        "is_background": bool(img.is_background_candidate or img.is_master_background), "background_reason": img.background_reason})
             continue
         area = max(0.0, img.rel_width) * max(0.0, img.rel_height)
         try:
@@ -106,5 +107,16 @@ def classify_images(images: List[ExtractedImage], base_dir: Path, slide_count: i
             reasons.append("cropped: cropped by the author (deliberate framing)")
 
         selected = score >= 0.0  # conservative: keep unless the decorative evidence outweighs
-        out.append({"selected": selected, "score": round(score, 2), "reasons": reasons or ["no_signal: no strong signal - kept"], "flagged": False})
+        # --- decoration / background (1.1.2): structure first (flags set by the extractor), then only
+        # strong heuristic evidence - repeated branding, lines/strips, near-uniform fills. A picture that
+        # is merely large, small or low-detail is never treated as decoration on that basis alone.
+        strong = [r.split(":", 1)[0] for r in reasons if r.split(":", 1)[0] in ("repeated", "extreme_aspect", "uniform", "background")]
+        if not selected and strong and not img.background_reason:
+            img.is_decorative = True
+            img.background_reason = "decorative: " + ", ".join(strong) + " (branding/strip/ornament repeated or without content)"
+        is_background = bool(img.is_background_candidate or img.is_master_background or img.is_decorative)
+        if is_background:
+            selected = False  # backgrounds are never auto-selected for the article body
+        out.append({"selected": selected, "score": round(score, 2), "reasons": reasons or ["no_signal: no strong signal - kept"], "flagged": False,
+                    "is_background": is_background, "background_reason": img.background_reason})
     return out

@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     # embedded_full = body: full slide render; attachments: full slides + embedded images (default since 1.1.1)
     # full_slide    = body: full slide render; attachments: full slides only (1.0 behaviour)
     image_attachment_mode: str = "embedded_full"
+    # Exclude slide backgrounds, master/layout graphics and decorative branding from the extracted
+    # embedded-image set (default for new presentations; stored per presentation). The full slide
+    # render is unaffected and is always sent to Qwen.
+    exclude_backgrounds: bool = True
     # Use ASCII-only attachment file names (Hebrew titles replaced) if the
     # ServiceNow instance rejects Unicode file names.
     ascii_filenames: bool = False

@@ -41,6 +41,7 @@ What to produce
 
 What NOT to produce
 - Do not describe appearance: background colours, fonts, logos, borders, decorative shapes, positions ("top left", "centered"), layouts or styling. Mention a spatial relationship only when it carries technical meaning (an arrow between two systems, a numbered flow).
+- The slide background (a photo, texture or theme graphic behind the content), watermarks, branding strips and layout ornaments carry no information: treat them as invisible. Use the full slide only for context; build the explanation from the informative content - the text, the screenshots and diagrams, the UI and product details, the configuration values and the procedures.
 - Do not copy the raw text of the slide as the explanation; interpret it. (The separate "visible_text" field is for the transcription.)
 - Do not invent components, relationships, values, steps or troubleshooting advice that are not supported by the slide. If something is unclear, unreadable or ambiguous, say so in "uncertainties" instead of guessing.
 - Do not repeat the same sentence in several fields, and do not restate the title.

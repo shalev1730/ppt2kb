@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS slide_images (
     note TEXT NOT NULL DEFAULT '',
     file_name TEXT NOT NULL DEFAULT '',
     attachment_sys_id TEXT NOT NULL DEFAULT '',
+    is_background INTEGER NOT NULL DEFAULT 0,
+    background_reason TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (job_id, slide_number, idx),
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
@@ -126,6 +128,10 @@ class Database:
             self._conn.execute("ALTER TABLE slides ADD COLUMN reviewed INTEGER NOT NULL DEFAULT 0")
         if "attachment_file_name" not in cols:  # 1.1.1: stable name of the full-slide attachment
             self._conn.execute("ALTER TABLE slides ADD COLUMN attachment_file_name TEXT NOT NULL DEFAULT ''")
+        icols = {r["name"] for r in self._conn.execute("PRAGMA table_info(slide_images)").fetchall()}
+        if icols and "is_background" not in icols:  # 1.1.2: background / decoration classification
+            self._conn.execute("ALTER TABLE slide_images ADD COLUMN is_background INTEGER NOT NULL DEFAULT 0")
+            self._conn.execute("ALTER TABLE slide_images ADD COLUMN background_reason TEXT NOT NULL DEFAULT ''")
 
     def close(self) -> None:
         with self._lock:
@@ -306,13 +312,13 @@ class Database:
                 self._conn.execute(
                     "INSERT INTO slide_images (job_id, slide_number, idx, file_ref, file_ext, original_ext, sha256, width, height, shape_name, "
                     "source_kind, placement_json, cropped, rotation, in_group, reuse_count, supported, selected, auto_selected, score, reasons_json, "
-                    "flagged, note, file_name, attachment_sys_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "flagged, note, file_name, attachment_sys_id, is_background, background_reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (job_id, r["slide_number"], r["idx"], r.get("file_ref", ""), r.get("file_ext", ""), r.get("original_ext", ""), r["sha256"],
                      r.get("width", 0), r.get("height", 0), r.get("shape_name", ""), r.get("source_kind", ""), json.dumps(r.get("placement", {})),
                      int(bool(r.get("cropped"))), float(r.get("rotation", 0) or 0), int(bool(r.get("in_group"))), int(r.get("reuse_count", 1)),
                      int(bool(r.get("supported", True))), int(bool(selected)), int(bool(r["selected"])), float(r.get("score", 0) or 0),
                      json.dumps(r.get("reasons", [])), int(bool(r.get("flagged"))), r.get("note", ""), r.get("file_name", ""),
-                     old["attachment_sys_id"] if old else ""),
+                     old["attachment_sys_id"] if old else "", int(bool(r.get("is_background"))), r.get("background_reason", "")),
                 )
 
     def get_slide_images(self, job_id: str, slide_number: Optional[int] = None) -> List[dict]:
